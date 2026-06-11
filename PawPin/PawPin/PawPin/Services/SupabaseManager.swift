@@ -12,7 +12,6 @@ import UIKit
 class SupabaseManager {
     static let shared = SupabaseManager()
     
-    // Your Supabase credentials
     let client = SupabaseClient(
         supabaseURL: URL(string: "https://nzuxlorkzeiikjwxiezv.supabase.co")!,
         supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56dXhsb3JremVpaWtqd3hpZXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODU4MjAsImV4cCI6MjA5NDc2MTgyMH0._jepdWnjN7d1Y8au76xDcJsPpMcc9V1tLmLUUvKgfDY"
@@ -30,8 +29,8 @@ class SupabaseManager {
         try await client.storage
             .from("cat-photos")
             .upload(
-                path: "\(reportID).jpg",
-                file: imageData,
+                "\(reportID).jpg",
+                data: imageData,
                 options: FileOptions(contentType: "image/jpeg")
             )
         
@@ -143,12 +142,12 @@ class SupabaseManager {
             .map { $0.trimmingCharacters(in: .whitespaces) }
         
         let features = CatFeatures(
-            breed: row.breed ?? "Unknown",
+            breed: row.breed ?? "",
             furColors: furColors,
-            eyeColor: row.eye_color ?? "Unknown",
-            pattern: row.pattern ?? "Unknown",
-            earType: row.ear_type ?? "Unknown",
-            size: row.size ?? "Unknown"
+            eyeColor: row.eye_color ?? "",
+            pattern: row.pattern ?? "",
+            earType: row.ear_type ?? "",
+            size: row.size ?? ""
         )
         
         let dateFormatter = ISO8601DateFormatter()
@@ -158,7 +157,8 @@ class SupabaseManager {
         return CatReport(
             id: row.id.uuidString,
             reportType: row.report_type,
-            ownerName: row.users?.full_name ?? row.pet_name ?? "Anonymous",
+            ownerName: row.users?.full_name ?? "Anonymous",
+            petName: row.pet_name,
             contactInfo: "in-app chat",
             photoURL: row.photo_url,
             features: features,
@@ -172,7 +172,7 @@ class SupabaseManager {
         )
     }
     
-    // Legacy callbacks for compatibility during transition
+    // Legacy callbacks
     func saveReport(report: CatReport, photo: UIImage, completion: @escaping (Bool) -> Void) {
         Task {
             do {
@@ -184,7 +184,7 @@ class SupabaseManager {
                     description: report.description,
                     rewardAmount: report.rewardAmount,
                     locationName: report.locationName,
-                    petName: report.ownerName
+                    petName: report.petName
                 )
                 completion(true)
             } catch {

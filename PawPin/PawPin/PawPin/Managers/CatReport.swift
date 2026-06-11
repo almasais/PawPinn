@@ -12,6 +12,7 @@ struct CatReport: Identifiable, Hashable {
     let id: String
     let reportType: String    // "lost" or "found"
     let ownerName: String
+    let petName: String?      // pet name entered by user (nil for found pets)
     let contactInfo: String
     let photoURL: String?
     let features: CatFeatures
@@ -27,27 +28,26 @@ struct CatReport: Identifiable, Hashable {
 extension CatReport {
     func toPetReport(viewerId: String?) -> PetReport {
         let type: PetReportType = (self.reportType == "lost") ? .lost : .found
-        let ownerIDStr = self.userId?.uuidString ?? ""
+        let ownerIDStr  = self.userId?.uuidString ?? ""
         let viewerIDStr = viewerId ?? ""
-        
+
         let coord: CLLocationCoordinate2D?
         if let lat = self.latitude, let lon = self.longitude {
             coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
         } else {
             coord = nil
         }
-        
-        let desc = self.description ?? "No description provided."
+
+        let desc     = self.description ?? "No description provided."
         let location = self.locationName ?? "Unknown location"
-        let gender: PetGender = .unknown
-        
+
         return PetReport(
             id: self.id,
             type: type,
-            petName: self.ownerName == "Anonymous" ? nil : self.ownerName,
+            petName: self.petName,
             photoURL: self.photoURL,
             localImage: nil,
-            gender: gender,
+            gender: .unknown,
             eyeColor: self.features.eyeColor,
             eyeAssetName: nil,
             description: desc,
@@ -61,7 +61,7 @@ extension CatReport {
             viewerID: viewerIDStr
         )
     }
-    
+
     func distance(to userLocation: CLLocation) -> Double? {
         guard let lat = latitude, let lon = longitude else { return nil }
         let reportLoc = CLLocation(latitude: lat, longitude: lon)
