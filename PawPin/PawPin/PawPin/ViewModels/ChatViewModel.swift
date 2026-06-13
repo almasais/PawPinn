@@ -134,6 +134,29 @@ final class ChatViewModel: ObservableObject {
         }
     }
     
+    func deleteChat(chatId: UUID) async {
+        do {
+            // Delete all messages belonging to this chat first
+            try await SupabaseManager.shared.client
+                .from("messages")
+                .delete()
+                .eq("chat_id", value: chatId.uuidString)
+                .execute()
+
+            // Delete the chat itself
+            try await SupabaseManager.shared.client
+                .from("chats")
+                .delete()
+                .eq("id", value: chatId.uuidString)
+                .execute()
+
+            // Remove locally so the UI updates instantly
+            self.chatPreviews.removeAll { $0.id == chatId }
+        } catch {
+            print("Error deleting chat: \(error)")
+        }
+    }
+    
     private func timeAgoString(from date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
