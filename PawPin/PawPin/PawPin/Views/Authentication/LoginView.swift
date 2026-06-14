@@ -5,7 +5,6 @@
 //  Created by Ahmed Alrashed on 2026-05-26.
 //
 
-
 import SwiftUI
 import Supabase
 
@@ -129,6 +128,4 @@ struct LoginView: View {
         }
     }
 }
-#Preview {
-    LoginView()
-}
+
