@@ -1,58 +1,62 @@
-//
-//  HomeView.swift
-//  PawPin
-//
-
 import SwiftUI
 
 struct HomeView: View {
     
     @StateObject private var viewModel = HomeViewModel()
     @State private var showAddReport = false
-    @State private var selectedFilter = "All Reports"
+    @State private var selectedFilter = "Recent"
     @Environment(\.colorScheme) var colorScheme
     
     let filters = ["Recent", "Nearby", "Rewards"]
     
-    var filteredReports: [CatReport] {
+    var rewardReports: [CatReport] {
+        viewModel.allReports.filter {
+            ($0.rewardAmount ?? 0) > 0
+        }
+    }
+    
+    var lostReportsOnly: [CatReport] {
+        let lost = viewModel.allReports.filter { $0.reportType == "lost" }
+        
         switch selectedFilter {
         case "Recent":
-            return viewModel.allReports.sorted { $0.date > $1.date }
+            return lost.sorted { $0.date > $1.date }
+            
         case "Nearby":
             if let userLoc = viewModel.userLocation {
-                return viewModel.allReports.sorted { r1, r2 in
-                    let d1 = r1.distance(to: userLoc) ?? Double.greatestFiniteMagnitude
-                    let d2 = r2.distance(to: userLoc) ?? Double.greatestFiniteMagnitude
-                    return d1 < d2
+                return lost.sorted {
+                    ($0.distance(to: userLoc) ?? .greatestFiniteMagnitude) <
+                        ($1.distance(to: userLoc) ?? .greatestFiniteMagnitude)
                 }
-            } else {
-                return viewModel.allReports.sorted { $0.date > $1.date }
             }
-        case "Lost":
-            return viewModel.lostReports
-        case "Found":
-            return viewModel.foundReports
-        default: // "All Reports"
-            return viewModel.allReports
+            return lost
+            
+        default:
+            return lost
         }
     }
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            (colorScheme == .dark ? Color(.systemBackground) : Color(red: 0.97, green: 0.97, blue: 0.97))
-                .ignoresSafeArea()
+            
+            (colorScheme == .dark
+             ? Color(.systemBackground)
+             : Color(red: 0.97, green: 0.97, blue: 0.97))
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 
-                // ── Header ──
+                // MARK: Header
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PawPin 🐾")
+                        Text("PinPaw 🐾")
                             .font(.title).bold()
+                        
                         Text("Find lost pets near you")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
+                    
                     Spacer()
                     
                     NavigationLink(destination: ProfileView()) {
@@ -65,98 +69,136 @@ struct HomeView: View {
                             )
                     }
                 }
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding()
                 
-                // ── Filter chips ──
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        ForEach(filters, id: \.self) { filter in
-                            Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    selectedFilter = filter
+                // MARK: CONTENT
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) {
+                        
+                        // =====================
+                        // REWARDS
+                        // =====================
+                        if !rewardReports.isEmpty {
+                            
+                            Text("Rewarded ")
+                                .font(.title2.bold())
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    
+                                    ForEach(rewardReports, id: \.id) { report in
+                                        
+                                        ZStack(alignment: .bottomTrailing) {
+                                            
+                                            if let photoURL = report.photoURL,
+                                               let url = URL(string: photoURL) {
+                                                
+                                                AsyncImage(url: url) { image in
+                                                    image
+                                                        .resizable()
+                                                        .scaledToFill()
+                                                } placeholder: {
+                                                    ProgressView()
+                                                }
+                                                .frame(width: 150, height: 150)
+                                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                                                
+                                            } else {
+                                                Rectangle()
+                                                    .fill(Color.gray.opacity(0.2))
+                                                    .frame(width: 150, height: 150)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 18))
+                                            }
+                                            
+                                            Text("\(Int(report.rewardAmount ?? 0)) SAR")
+                                                .font(.caption.bold())
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.brand)
+                                                .clipShape(Capsule())
+                                                .padding(6)
+                                        }
+                                    }
                                 }
-                            } label: {
-                                Text(filter)
-                                    .font(.subheadline)
-                                    .fontWeight(
-                                        selectedFilter == filter ?
-                                        .bold : .regular
-                                    )
-                                    .foregroundColor(
-                                        selectedFilter == filter ?
-                                        .white : (colorScheme == .dark ? .white : .primary)
-                                    )
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        selectedFilter == filter ?
-                                        Color.brand : (colorScheme == .dark ? Color(.systemGray6) : Color(.systemGray5))
-                                    )
-                                    .clipShape(Capsule())
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .padding(.bottom, 8)
-                
-                // ── Reports list ──
-                if viewModel.isLoading {
-                    Spacer()
-                    ProgressView("Loading reports...")
-                    Spacer()
-                    
-                } else if filteredReports.isEmpty {
-                    Spacer()
-                    VStack(spacing: 16) {
-                        Image(systemName: "pawprint")
-                            .font(.system(size: 50))
-                            .foregroundColor(Color.brand.opacity(0.4))
-                        Text("No reports yet")
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        Text("Be the first to post!")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    Spacer()
-                    
-                } else {
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(filteredReports, id: \.id) { report in
-                                NavigationLink(destination: ReportCardView(report: report.toPetReport(viewerId: AuthManager.shared.currentUserID?.uuidString))) {
-                                    PetCardComponent(report: report)
-                                }
-                                .buttonStyle(PlainButtonStyle())
                                 .padding(.horizontal)
                             }
                         }
-                        .padding(.vertical, 8)
-                        .padding(.bottom, 100)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: filteredReports)
+                        
+                        // =====================
+                        // LOST PETS HEADER
+                        // =====================
+                        
+                        Text("Lost Pets 🐶")
+                            .font(.title2.bold())
+                            .padding(.horizontal)
+                        
+                        // =====================
+                        // FILTERS (UNDER TITLE)
+                        // =====================
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 10) {
+                                ForEach(filters, id: \.self) { filter in
+                                    Button {
+                                        selectedFilter = filter
+                                    } label: {
+                                        Text(filter)
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 8)
+                                            .background(
+                                                selectedFilter == filter
+                                                ? Color.brand
+                                                : Color.gray.opacity(0.2)
+                                            )
+                                            .foregroundColor(
+                                                selectedFilter == filter ? .white : .primary
+                                            )
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                        
+                        // =====================
+                        // PET CARDS (FILTERED)
+                        // =====================
+                        
+                        VStack(spacing: 12) {
+                            ForEach(lostReportsOnly, id: \.id) { report in
+                                NavigationLink(
+                                    destination: ReportCardView(
+                                        report: report.toPetReport(
+                                            viewerId: AuthManager.shared.currentUserID?.uuidString
+                                        )
+                                    )
+                                ) {
+                                    PetCardComponent(report: report)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal)
+                        
                     }
+                    .padding(.bottom, 120)
                 }
             }
             
-            // ── Add report button ──
+            // Floating Button
             Button {
                 showAddReport = true
             } label: {
                 Image(systemName: "plus")
-                    .font(.title2).bold()
+                    .font(.title2.bold())
                     .foregroundColor(.white)
                     .frame(width: 56, height: 56)
                     .background(Color.brand)
                     .clipShape(Circle())
-                    .shadow(
-                        color: Color.brand.opacity(0.4),
-                        radius: 8, y: 4
-                    )
+                    .shadow(radius: 8)
             }
-            .padding(.trailing, 20)
+            .padding(.trailing, 15)
             .padding(.bottom, 100)
         }
         .onAppear {
@@ -170,6 +212,8 @@ struct HomeView: View {
         .navigationBarHidden(true)
     }
 }
-#Preview{
-    HomeView()
+#Preview {
+    NavigationStack {
+        HomeView()
+    }
 }

@@ -7,12 +7,14 @@
 
 import SwiftUI
 import PhotosUI
+import Supabase
+import UserNotifications
 
 struct MessageView: View {
     let chatPreview: ChatPreviewUI
     var shouldRestoreTabBarOnDisappear: Bool = true
     
-    @Environment(\.showTabBar) private var showTabBar
+    @Environment(\.showTabBar) private var showTabBar: Binding<Bool>
     @Environment(\.colorScheme) var colorScheme
     
     @StateObject private var chatManager = ChatManager.shared
@@ -74,16 +76,29 @@ struct MessageView: View {
                             }
                             .padding(.horizontal)
                             .id(msg.id)
+                            .contextMenu {
+                                // existing context menu could be here (not present in original code but per instruction)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    Task { await deleteMessage(id: msg.id) }
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     .padding(.top, 12)
                     .padding(.bottom, 8)
                 }
                 .onChange(of: chatManager.currentMessages.count) { _ in
-                    if let last = chatManager.currentMessages.last {
-                        withAnimation {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
+                    guard let last = chatManager.currentMessages.last else { return }
+                    withAnimation {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                    let isCurrentUser = last.senderId == currentUserId
+                    if !isCurrentUser {
+                        scheduleLocalNotificationFor(messageId: last.id, contentText: last.content, imageUrl: last.imageUrl, from: chatPreview.username)
                     }
                 }
             }
@@ -195,6 +210,7 @@ struct MessageView: View {
             }
         }
         .onAppear {
+            requestNotificationAuthorizationIfNeeded()
             showTabBar.wrappedValue = false
             Task {
                 try? await chatManager.fetchMessages(for: chatPreview.id)
@@ -223,6 +239,40 @@ struct MessageView: View {
         }
         .fullScreenCover(isPresented: $showCamera) {
             ImagePicker(sourceType: .camera, selectedImage: $pendingImage)
+        }
+    }
+    
+    private func requestNotificationAuthorizationIfNeeded() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+                if let error = error {
+                    print("Notification authorization error: \(error)")
+                } else {
+                    print("Notifications granted: \(granted)")
+                }
+            }
+        }
+    }
+    
+    private func scheduleLocalNotificationFor(messageId: UUID, contentText: String?, imageUrl: String?, from senderName: String) {
+        let content = UNMutableNotificationContent()
+        content.title = senderName
+        if let text = contentText, !text.isEmpty {
+            content.body = text
+        } else if imageUrl != nil {
+            content.body = "صورة جديدة"
+        } else {
+            content.body = "رسالة جديدة"
+        }
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.5, repeats: false)
+        let request = UNNotificationRequest(identifier: messageId.uuidString, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to schedule notification: \(error)")
+            }
         }
     }
     
@@ -270,6 +320,22 @@ struct MessageView: View {
                     isUploading = false
                 }
             }
+        }
+    }
+    
+    private func deleteMessage(id: UUID) async {
+        do {
+            try await SupabaseManager.shared.client
+                .from("messages")
+                .delete()
+                .eq("id", value: id)
+                .execute()
+
+            await MainActor.run {
+                chatManager.currentMessages.removeAll { $0.id == id }
+            }
+        } catch {
+            print("Failed to delete message: \(error)")
         }
     }
 }
@@ -331,3 +397,4 @@ extension UIImage {
         }
     }
 }
+

@@ -2,8 +2,9 @@
 //  ProfileView.swift
 //  PawPin
 //
-
 import SwiftUI
+import PhotosUI
+import Supabase
 
 struct ProfileView: View {
     @Environment(\.colorScheme) var colorScheme
@@ -14,6 +15,11 @@ struct ProfileView: View {
     @ObservedObject private var authManager = AuthManager.shared
     @State private var showAddReport = false
     @State private var showSettings = false
+    @State private var showEditProfile = false
+    @State private var editedName: String = ""
+    @State private var pickedPhotoItem: PhotosPickerItem? = nil
+    @State private var pickedUIImage: UIImage? = nil
+    @State private var isSavingProfile = false
     
     var body: some View {
         VStack(spacing: 0) {
@@ -38,12 +44,23 @@ struct ProfileView: View {
                 
                 Spacer()
                 
-                Button {
-                    showSettings = true
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.title3)
-                        .foregroundColor(Color.brand)
+                HStack(spacing: 16) {
+                    Button {
+                        showEditProfile = true
+                        editedName = authManager.currentUserFullName ?? ""
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(Color.brand)
+                    }
+
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .foregroundColor(Color.brand)
+                    }
                 }
             }
             .padding(.horizontal)
@@ -54,14 +71,24 @@ struct ProfileView: View {
                 // Profile Header Row
                 Section {
                     VStack(spacing: 12) {
-                        Circle()
-                            .fill(Color.brand.opacity(0.15))
-                            .frame(width: 90, height: 90)
-                            .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 40))
-                                    .foregroundColor(Color.brand)
-                            )
+                        ZStack {
+                            if let ui = pickedUIImage {
+                                Image(uiImage: ui)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 90, height: 90)
+                                    .clipShape(Circle())
+                            } else {
+                                Circle()
+                                    .fill(Color.brand.opacity(0.15))
+                                    .frame(width: 90, height: 90)
+                                    .overlay(
+                                        Image(systemName: "person.fill")
+                                            .font(.system(size: 40))
+                                            .foregroundColor(Color.brand)
+                                    )
+                            }
+                        }
                         
                         Text(authManager.currentUserFullName ?? "My Profile")
                             .font(.title2).bold()
@@ -174,7 +201,89 @@ struct ProfileView: View {
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $showEditProfile) {
+            NavigationStack {
+                Form {
+                    Section(header: Text("Profile Photo")) {
+                        HStack(spacing: 16) {
+                            if let ui = pickedUIImage {
+                                Image(uiImage: ui)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 72, height: 72)
+                                    .clipShape(Circle())
+                            } else {
+                                Circle()
+                                    .fill(Color.brand.opacity(0.15))
+                                    .frame(width: 72, height: 72)
+                                    .overlay(Image(systemName: "person.fill").foregroundColor(Color.brand))
+                            }
+                            PhotosPicker(selection: $pickedPhotoItem, matching: .images) {
+                                Text("Choose Photo")
+                            }
+                        }
+                    }
+                    Section(header: Text("Name")) {
+                        TextField("Full name", text: $editedName)
+                            .textInputAutocapitalization(.words)
+                            .disableAutocorrection(true)
+                    }
+                }
+                .navigationTitle("Edit Profile")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { showEditProfile = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button {
+                            Task { await saveProfileEdits() }
+                        } label: {
+                            if isSavingProfile { ProgressView() } else { Text("Save") }
+                        }
+                        .disabled(isSavingProfile || editedName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+        }
         .navigationBarHidden(true)
+        .onChange(of: pickedPhotoItem) { _, newItem in
+            guard let item = newItem else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let uiImg = UIImage(data: data) {
+                    await MainActor.run { pickedUIImage = uiImg }
+                }
+            }
+        }
+    }
+    
+    private func saveProfileEdits() async {
+        let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        guard let userId = AuthManager.shared.currentUserID else { return }
+        
+        await MainActor.run { isSavingProfile = true }
+        
+        do {
+            try await SupabaseManager.shared.client
+                .from("users")
+                .update(["full_name": name])
+                .eq("id", value: userId.uuidString)
+                .execute()
+            
+            try await SupabaseManager.shared.client.auth.update(
+                user: UserAttributes(data: ["full_name": .string(name)])
+            )
+            
+            await MainActor.run {
+                AuthManager.shared.currentUserFullName = name
+                showEditProfile = false
+                isSavingProfile = false
+            }
+        } catch {
+            print("Failed to update profile: \(error)")
+            await MainActor.run { isSavingProfile = false }
+        }
     }
 }
 
@@ -195,4 +304,8 @@ struct StatBox: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
     }
+}
+
+#Preview {
+    ProfileView()
 }

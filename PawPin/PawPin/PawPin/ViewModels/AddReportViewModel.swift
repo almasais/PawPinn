@@ -61,9 +61,11 @@ final class AddReportViewModel: ObservableObject {
                     contactInfo: contactInfo.isEmpty ? "in-app chat" : contactInfo,
                     photoURL: nil,
                     features: features,
+                    
                     date: Date(),
                     userId: AuthManager.shared.currentUserID,
                     latitude: lat,
+                    gender: selectedGender,
                     longitude: lon,
                     description: description.isEmpty ? nil : description,
                     locationName: locationName.isEmpty ? nil : locationName,

@@ -63,6 +63,7 @@ class SupabaseManager {
             size: report.features.size,
             user_id: report.userId,
             latitude: latitude,
+            gender: report.gender,
             longitude: longitude,
             description: description,
             reward_amount: rewardAmount,
@@ -165,6 +166,7 @@ class SupabaseManager {
             date: date,
             userId: row.user_id,
             latitude: row.latitude,
+            gender: row.gender ?? "",
             longitude: row.longitude,
             description: row.description,
             locationName: row.location_name,
@@ -180,6 +182,7 @@ class SupabaseManager {
                     report: report,
                     photo: photo,
                     latitude: report.latitude,
+
                     longitude: report.longitude,
                     description: report.description,
                     rewardAmount: report.rewardAmount,
@@ -231,6 +234,7 @@ struct InsertReportRow: Codable {
     let size: String
     let user_id: UUID?
     let latitude: Double?
+    let gender: String?
     let longitude: Double?
     let description: String?
     let reward_amount: Double?
@@ -251,6 +255,7 @@ struct ReportRowWithUser: Codable {
     let size: String?
     let user_id: UUID?
     let latitude: Double?
+    let gender: String?
     let longitude: Double?
     let description: String?
     let reward_amount: Double?

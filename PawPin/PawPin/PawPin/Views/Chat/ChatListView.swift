@@ -4,7 +4,6 @@
 //
 //  Created by AlAnoud Alsaaid on 25/11/1447 AH.
 //
-
 import SwiftUI
 
 struct ChatListView: View {
@@ -84,6 +83,15 @@ struct ChatListView: View {
                             }
                             .padding(.vertical, 6)
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                Task {
+                                    await chatVM.deleteChat(chatId: chat.id)
+                                }
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
                     }
                     .listStyle(.plain)
                     .refreshable {
@@ -98,3 +106,4 @@ struct ChatListView: View {
         }
     }
 }
+

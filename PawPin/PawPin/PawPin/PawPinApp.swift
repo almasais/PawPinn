@@ -23,7 +23,7 @@ struct PawPinApp: App {
                 } else if authManager.isAuthenticated {
                     ContentView()
                 } else {
-                    LandingPageView()
+                    SplashView()
                 }
             }
             .preferredColorScheme(appTheme.colorScheme)

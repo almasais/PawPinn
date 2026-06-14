@@ -153,7 +153,6 @@ struct CameraView: View {
                 CameraPreview(session: cam.session)
                     .ignoresSafeArea()
                 
-                // Simulator Live Feed Glassmorphic Card
                 #if targetEnvironment(simulator)
                 VStack(spacing: 16) {
                     Image(systemName: "camera.badge.ellipsis")
@@ -195,9 +194,7 @@ struct CameraView: View {
                 .offset(y: -40)
                 #endif
                 
-                // Combined Controls Layout - Snapchat / Apple Vision-style
                 VStack {
-                    // Top controls
                     HStack {
                         Button {
                             dismiss()
@@ -229,9 +226,7 @@ struct CameraView: View {
                     
                     Spacer()
                     
-                    // Bottom controls
                     HStack(alignment: .center, spacing: 0) {
-                        // Gallery Button (Left) - Premium Glassmorphic style
                         PhotosPicker(selection: $selectedPhoto, matching: .images) {
                             VStack(spacing: 4) {
                                 ZStack {
@@ -264,7 +259,6 @@ struct CameraView: View {
                         }
                         .frame(maxWidth: .infinity)
                         
-                        // Shutter Capture Button (Center)
                         Button {
                             cam.capturePhoto { img in
                                 if let img = img {
@@ -286,7 +280,6 @@ struct CameraView: View {
                         .frame(maxWidth: .infinity)
                         .disabled(isAnalyzing)
                         
-                        // Camera Flip Button (Right)
                         Button {
                             cam.flipCamera()
                         } label: {
@@ -316,7 +309,6 @@ struct CameraView: View {
                     .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? geometry.safeAreaInsets.bottom + 16 : 24)
                 }
                 
-                // AI scanner overlay screen - Snapchat/Apple Vision style
                 if isAnalyzing, let img = libraryThumb {
                     ZStack {
                         Image(uiImage: img)
@@ -461,6 +453,7 @@ struct ResultsView: View {
     @State private var isReanalyzing = false
     @State private var selectedPhotoInResults: PhotosPickerItem? = nil
     @State private var showAddReport = false
+    @State private var showNoMatches = false  // ← جديد
     
     init(matches: [CatMatch], heroImage: UIImage?) {
         self.matches = matches
@@ -471,7 +464,6 @@ struct ResultsView: View {
     
     var body: some View {
         ZStack(alignment: .topLeading) {
-            // Main scrollable details view
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
                 
@@ -488,78 +480,11 @@ struct ResultsView: View {
                             }
                             .frame(maxWidth: .infinity)
                         } else if currentMatches.isEmpty {
-                            // Beautiful, premium empty state with actions
-                            VStack(spacing: 24) {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .font(.system(size: 50))
-                                    .foregroundColor(Color.brand)
-                                    .padding(.top, 30)
-                                
-                                Text("No Matches Found")
-                                    .font(.title2).bold()
-                                    .foregroundColor(.primary)
-                                
-                                Text("We couldn't find any matching reports in our database. You can create a new report using this photo immediately.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 28)
-                                
-                                Button {
-                                    showAddReport = true
-                                } label: {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "plus.circle.fill")
-                                        Text("Add Lost/Found Report")
-                                            .font(.headline)
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .background(Color.brand)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                            // لا شي هنا — الشاشة الكاملة تطلع تلقائي
+                            Color.clear
+                                .onAppear {
+                                    showNoMatches = true
                                 }
-                                .padding(.horizontal, 28)
-                                .shadow(color: Color.brand.opacity(0.3), radius: 6, y: 3)
-                                
-                                Text("OR")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
-                                    .bold()
-                                
-                                VStack(spacing: 12) {
-                                    Button {
-                                        dismiss()
-                                    } label: {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "camera.fill")
-                                            Text("Take Another Photo")
-                                        }
-                                        .font(.subheadline).bold()
-                                        .foregroundColor(Color.brand)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
-                                        .background(Color.brand.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    }
-                                    
-                                    PhotosPicker(selection: $selectedPhotoInResults, matching: .images) {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "photo.stack.fill")
-                                            Text("Upload Another Image")
-                                        }
-                                        .font(.subheadline).bold()
-                                        .foregroundColor(Color.brand)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
-                                        .background(Color.brand.opacity(0.12))
-                                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                                    }
-                                }
-                                .padding(.horizontal, 28)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.bottom, 60)
                         } else {
                             VStack(spacing: 12) {
                                 ForEach(currentMatches, id: \.report.id) { match in
@@ -582,7 +507,6 @@ struct ResultsView: View {
                 .ignoresSafeArea(edges: .top)
             }
             
-            // Custom Floating Back Button
             Button {
                 dismiss()
             } label: {
@@ -629,6 +553,20 @@ struct ResultsView: View {
                 }
             }
         }
+        .sheet(isPresented: $showNoMatches) {
+            NoMatchesFullScreenView(
+                onDismissToCamera: { dismiss() },
+                onUploadAnother: {
+                    showNoMatches = false
+                },
+                onAddReport: {
+                    showNoMatches = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        showAddReport = true
+                    }
+                }
+            )
+        }
         .sheet(isPresented: $showAddReport) {
             NavigationStack {
                 ReportPetView(preselectedImage: currentHeroImage)
@@ -660,6 +598,138 @@ struct ResultsView: View {
     }
 }
 
+// MARK: - No Matches Screen (Updated to Match the New UI البصري الجديد)
+struct NoMatchesFullScreenView: View {
+    let onDismissToCamera: () -> Void
+    let onUploadAnother: () -> Void
+    let onAddReport: () -> Void
+
+    @State private var showIcon = false
+    @State private var showTitle = false
+    @State private var showSubtitle = false
+    @State private var showPrimaryBtn = false
+    @State private var showOR = false
+    @State private var showSecBtn1 = false
+    @State private var showSecBtn2 = false
+
+    // تحديد درجات الألوان المتطابقة مع الصور الجديدة لتناسق الـ Brand
+    private let customGold = Color(red: 242/255, green: 181/255, blue: 89/255) // لون Found a Pet الذهبي
+    private let customLightBeige = Color(red: 253/255, green: 248/255, blue: 242/255) // الخلفية الفاتحة للأزرار
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 16) {
+                // Card container similar to the form card in the screenshot
+                VStack(spacing: 20) {
+                    // Icon
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(customGold)
+                        .padding(.top, 8)
+                        .opacity(showIcon ? 1 : 0)
+                        .scaleEffect(showIcon ? 1 : 0.6)
+                        .animation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.1), value: showIcon)
+
+                    // Title
+                    Text("No Matches Found")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundColor(.primary)
+                        .opacity(showTitle ? 1 : 0)
+                        .offset(y: showTitle ? 0 : 14)
+                        .animation(.easeOut(duration: 0.4).delay(0.2), value: showTitle)
+
+                    // Subtitle
+                    Text("We couldn't find any matching reports in our database. You can create a new report using this photo immediately.")
+                        .font(.system(size: 15))
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 6)
+                        .lineSpacing(3)
+                        .opacity(showSubtitle ? 1 : 0)
+                        .offset(y: showSubtitle ? 0 : 14)
+                        .animation(.easeOut(duration: 0.4).delay(0.3), value: showSubtitle)
+
+                    // Primary action button (gold)
+                    Button(action: { onAddReport() }) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "plus").font(.system(size: 18, weight: .bold))
+                            Text("Add Lost/Found Report").font(.system(size: 18, weight: .bold))
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(customGold)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .shadow(color: customGold.opacity(0.25), radius: 8, x: 0, y: 4)
+                    .opacity(showPrimaryBtn ? 1 : 0)
+                    .offset(y: showPrimaryBtn ? 0 : 12)
+                    .animation(.easeOut(duration: 0.35).delay(0.4), value: showPrimaryBtn)
+
+                    // OR divider
+                    Text("OR")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .opacity(showOR ? 1 : 0)
+                        .animation(.easeOut(duration: 0.3).delay(0.48), value: showOR)
+
+                    // Secondary buttons (beige background, gold text)
+                    VStack(spacing: 12) {
+                        Button(action: { onDismissToCamera() }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "camera.fill")
+                                Text("Take Another Photo")
+                            }
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(customGold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(customLightBeige)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .opacity(showSecBtn1 ? 1 : 0)
+                        .offset(y: showSecBtn1 ? 0 : 10)
+                        .animation(.easeOut(duration: 0.32).delay(0.54), value: showSecBtn1)
+
+                        Button(action: { onUploadAnother() }) {
+                            HStack(spacing: 10) {
+                                Image(systemName: "photo.fill")
+                                Text("Upload Another Image")
+                            }
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(customGold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(customLightBeige)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        }
+                        .opacity(showSecBtn2 ? 1 : 0)
+                        .offset(y: showSecBtn2 ? 0 : 10)
+                        .animation(.easeOut(duration: 0.32).delay(0.60), value: showSecBtn2)
+                    }
+                }
+                .padding(20)
+                .background(Color(.systemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .shadow(color: Color.black.opacity(0.06), radius: 10, x: 0, y: 4)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 24)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+        .onAppear {
+            showIcon       = true
+            showTitle      = true
+            showSubtitle   = true
+            showPrimaryBtn = true
+            showOR         = true
+            showSecBtn1    = true
+            showSecBtn2    = true
+        }
+    }
+}
 struct MatchRow: View {
     let match: CatMatch
     
@@ -718,3 +788,11 @@ struct BlurView: UIViewRepresentable {
         uiView.effect = UIBlurEffect(style: style)
     }
 }
+#Preview("NoMatches Full Screen") {
+    NoMatchesFullScreenView(
+        onDismissToCamera: {},
+        onUploadAnother: {},
+        onAddReport: {}
+    )
+}
+

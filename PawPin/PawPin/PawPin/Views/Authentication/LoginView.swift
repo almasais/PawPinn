@@ -87,9 +87,9 @@ struct LoginView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                            .font(.title3)
+                        Image(systemName: "chevron.left")
+                            .foregroundColor(Color.brand)
+                            .font(.body.weight(.semibold))
                     }
                 }
             }
@@ -128,3 +128,4 @@ struct LoginView: View {
         }
     }
 }
+
