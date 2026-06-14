@@ -9,6 +9,14 @@ struct PetCardComponent: View {
     
     let report: CatReport
     
+    var displayName: String {
+        if report.reportType == "lost" {
+            return report.petName ?? "Lost Pet"
+        } else {
+            return "Found Pet"
+        }
+    }
+    
     var body: some View {
         HStack(spacing: 12) {
             
@@ -40,47 +48,44 @@ struct PetCardComponent: View {
             // ── Info ──
             VStack(alignment: .leading, spacing: 5) {
                 
-                // Status badge + name
+                // Status badge + pet name
                 HStack(spacing: 6) {
                     Text(report.reportType == "lost" ? "Lost" : "Found")
                         .font(.caption2).bold()
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(
-                            report.reportType == "lost" ?
-                            Color.red : Color.green
-                        )
+                        .background(report.reportType == "lost" ? Color.red : Color.green)
                         .clipShape(Capsule())
                     
-                    Text(report.ownerName)
+                    Text(displayName)
                         .font(.subheadline).bold()
                         .foregroundColor(.primary)
                 }
                 
-                // Breed
-                Text(report.features.breed.capitalized)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Location
+                if let locationName = report.locationName, !locationName.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.fill")
+                            .font(.caption2)
+                            .foregroundColor(Color.brand)
+                        Text(locationName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 
-                // Eye + fur color
-                HStack(spacing: 4) {
-                    Image(systemName: "eye.fill")
-                        .font(.caption2)
-                        .foregroundColor(Color.brand)
-                    Text(report.features.eyeColor.capitalized)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("·")
-                        .foregroundColor(.secondary)
-                    
-                    Text(
-                        report.features.furColors.first?
-                            .capitalized ?? ""
-                    )
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                // Eye color
+                if !report.features.eyeColor.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "eye.fill")
+                            .font(.caption2)
+                            .foregroundColor(Color.brand)
+                        Text(report.features.eyeColor.capitalized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 
                 // Date

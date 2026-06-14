@@ -12,7 +12,6 @@ import UIKit
 class SupabaseManager {
     static let shared = SupabaseManager()
     
-    // Your Supabase credentials
     let client = SupabaseClient(
         supabaseURL: URL(string: "https://nzuxlorkzeiikjwxiezv.supabase.co")!,
         supabaseKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im56dXhsb3JremVpaWtqd3hpZXp2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODU4MjAsImV4cCI6MjA5NDc2MTgyMH0._jepdWnjN7d1Y8au76xDcJsPpMcc9V1tLmLUUvKgfDY"
@@ -30,8 +29,8 @@ class SupabaseManager {
         try await client.storage
             .from("cat-photos")
             .upload(
-                path: "\(reportID).jpg",
-                file: imageData,
+                "\(reportID).jpg",
+                data: imageData,
                 options: FileOptions(contentType: "image/jpeg")
             )
         
@@ -64,7 +63,6 @@ class SupabaseManager {
             size: report.features.size,
             user_id: report.userId,
             latitude: latitude,
-            gender: report.gender,
             longitude: longitude,
             description: description,
             reward_amount: rewardAmount,
@@ -87,7 +85,6 @@ class SupabaseManager {
             .select("*, users(full_name)")
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
@@ -98,7 +95,6 @@ class SupabaseManager {
             .eq("report_type", value: "lost")
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
@@ -109,12 +105,11 @@ class SupabaseManager {
             .eq("user_id", value: userId.uuidString)
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
     // ─────────────────────────────
-    // DELETE REPORT
+    // DELETE / MARK FOUND
     // ─────────────────────────────
     func deleteReportAsync(reportID: String) async throws {
         try await client
@@ -125,9 +120,7 @@ class SupabaseManager {
     }
     
     func markReportAsFoundAsync(reportID: String) async throws {
-        struct UpdateReport: Codable {
-            let report_type: String
-        }
+        struct UpdateReport: Codable { let report_type: String }
         try await client
             .from("reports")
             .update(UpdateReport(report_type: "found"))
@@ -136,7 +129,7 @@ class SupabaseManager {
     }
     
     // ─────────────────────────────
-    // CONVERT ROW TO CatReport
+    // CONVERT ROW → CatReport
     // ─────────────────────────────
     private func rowToCatReport(_ row: ReportRowWithUser) -> CatReport {
         let furColors = (row.fur_colors ?? "")
@@ -144,12 +137,12 @@ class SupabaseManager {
             .map { $0.trimmingCharacters(in: .whitespaces) }
         
         let features = CatFeatures(
-            breed: row.breed ?? "Unknown",
+            breed: row.breed ?? "",
             furColors: furColors,
-            eyeColor: row.eye_color ?? "Unknown",
-            pattern: row.pattern ?? "Unknown",
-            earType: row.ear_type ?? "Unknown",
-            size: row.size ?? "Unknown"
+            eyeColor: row.eye_color ?? "",
+            pattern: row.pattern ?? "",
+            earType: row.ear_type ?? "",
+            size: row.size ?? ""
         )
         
         let dateFormatter = ISO8601DateFormatter()
@@ -159,22 +152,23 @@ class SupabaseManager {
         return CatReport(
             id: row.id.uuidString,
             reportType: row.report_type,
-            ownerName: row.users?.full_name ?? row.pet_name ?? "Anonymous",
+            ownerName: row.users?.full_name ?? "Anonymous",
+            petName: row.pet_name,
             contactInfo: "in-app chat",
             photoURL: row.photo_url,
             features: features,
             date: date,
             userId: row.user_id,
             latitude: row.latitude,
-            gender: row.gender ?? "",
             longitude: row.longitude,
+            gender: row.gender ?? "Unknown",
             description: row.description,
             locationName: row.location_name,
             rewardAmount: row.reward_amount
         )
     }
     
-    // Legacy callbacks for compatibility during transition
+    // Legacy callbacks
     func saveReport(report: CatReport, photo: UIImage, completion: @escaping (Bool) -> Void) {
         Task {
             do {
@@ -182,12 +176,11 @@ class SupabaseManager {
                     report: report,
                     photo: photo,
                     latitude: report.latitude,
-
                     longitude: report.longitude,
                     description: report.description,
                     rewardAmount: report.rewardAmount,
                     locationName: report.locationName,
-                    petName: report.ownerName
+                    petName: report.petName
                 )
                 completion(true)
             } catch {
@@ -198,23 +191,15 @@ class SupabaseManager {
     
     func getLostReports(completion: @escaping ([CatReport]) -> Void) {
         Task {
-            do {
-                let reports = try await getLostReportsAsync()
-                completion(reports)
-            } catch {
-                completion([])
-            }
+            do { let reports = try await getLostReportsAsync(); completion(reports) }
+            catch { completion([]) }
         }
     }
     
     func getAllReports(completion: @escaping ([CatReport]) -> Void) {
         Task {
-            do {
-                let reports = try await getAllReportsAsync()
-                completion(reports)
-            } catch {
-                completion([])
-            }
+            do { let reports = try await getAllReportsAsync(); completion(reports) }
+            catch { completion([]) }
         }
     }
 }
@@ -234,7 +219,6 @@ struct InsertReportRow: Codable {
     let size: String
     let user_id: UUID?
     let latitude: Double?
-    let gender: String?
     let longitude: Double?
     let description: String?
     let reward_amount: Double?
@@ -255,8 +239,8 @@ struct ReportRowWithUser: Codable {
     let size: String?
     let user_id: UUID?
     let latitude: Double?
-    let gender: String?
     let longitude: Double?
+    let gender: String?
     let description: String?
     let reward_amount: Double?
     let location_name: String?

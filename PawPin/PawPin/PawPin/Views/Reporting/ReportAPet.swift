@@ -9,33 +9,7 @@ import SwiftUI
 import PhotosUI
 import MapKit
 import Combine
-
-// MARK: - Brand colour #EEB651
-extension Color {
-    static let brand = Color(red: 238/255, green: 182/255, blue: 81/255)
-    static var adaptiveBorder: Color {
-        Color(UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.15) : UIColor(white: 0.88, alpha: 1.0)
-        })
-    }
-    static var adaptivePlaceholder: Color {
-        Color(UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark ? UIColor.placeholderText : UIColor(white: 0.65, alpha: 1.0)
-        })
-    }
-}
-
-// MARK: - Double helper
-extension Double {
-    func rounded(toPlaces places: Int) -> Double {
-        let factor = pow(10.0, Double(places))
-        return (self * factor).rounded() / factor
-    }
-}
-
-// MARK: - Models
-enum PetReportType { case found, lost }
-enum PetGender     { case male, female, unknown }
+import CoreLocation
 
 // MARK: - Eye Options
 struct EyeOption: Identifiable {
@@ -80,33 +54,21 @@ struct EyePickerSheet: View {
                             VStack(spacing: 6) {
                                 ZStack {
                                     Image(eye.assetName)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 64, height: 64)
-                                        .clipShape(Circle())
-
+                                        .resizable().scaledToFill()
+                                        .frame(width: 64, height: 64).clipShape(Circle())
                                     if selectedID == eye.id {
-                                        Circle()
-                                            .strokeBorder(Color.brand, lineWidth: 3)
-                                            .frame(width: 68, height: 68)
-                                        Circle()
-                                            .fill(Color.brand.opacity(0.22))
-                                            .frame(width: 64, height: 64)
+                                        Circle().strokeBorder(Color.brand, lineWidth: 3).frame(width: 68, height: 68)
+                                        Circle().fill(Color.brand.opacity(0.22)).frame(width: 64, height: 64)
                                         Image(systemName: "checkmark")
-                                            .font(.system(size: 18, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .shadow(radius: 2)
+                                            .font(.system(size: 18, weight: .bold)).foregroundColor(.white).shadow(radius: 2)
                                     } else {
-                                        Circle()
-                                            .strokeBorder(Color.adaptiveBorder, lineWidth: 1.5)
-                                            .frame(width: 68, height: 68)
+                                        Circle().strokeBorder(Color.adaptiveBorder, lineWidth: 1.5).frame(width: 68, height: 68)
                                     }
                                 }
                                 Text(eye.name)
                                     .font(.system(size: 10, weight: selectedID == eye.id ? .bold : .regular))
                                     .foregroundColor(selectedID == eye.id ? .brand : .secondary)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(2)
+                                    .multilineTextAlignment(.center).lineLimit(2)
                             }
                         }
                         .buttonStyle(.plain)
@@ -169,9 +131,9 @@ struct MapLocationPicker: View {
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         )
     )
-    @State private var pin: MapPin?    = nil
-    @State private var isResolving     = false
-    @State private var addressLabel    = ""
+    @State private var pin: MapPin? = nil
+    @State private var isResolving  = false
+    @State private var addressLabel = ""
     @State private var didCenterOnUser = false
 
     var body: some View {
@@ -183,13 +145,9 @@ struct MapLocationPicker: View {
                             Annotation("", coordinate: pin.coordinate) {
                                 VStack(spacing: 0) {
                                     Image(systemName: "mappin.circle.fill")
-                                        .font(.system(size: 36))
-                                        .foregroundColor(.brand)
-                                        .shadow(radius: 3)
+                                        .font(.system(size: 36)).foregroundColor(.brand).shadow(radius: 3)
                                     Image(systemName: "arrowtriangle.down.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.brand)
-                                        .offset(y: -4)
+                                        .font(.system(size: 10)).foregroundColor(.brand).offset(y: -4)
                                 }
                             }
                         }
@@ -197,9 +155,7 @@ struct MapLocationPicker: View {
                     .mapStyle(.standard)
                     .mapControls { MapCompass(); MapScaleView(); MapUserLocationButton() }
                     .onTapGesture { screenPoint in
-                        if let coord = proxy.convert(screenPoint, from: .local) {
-                            movePinTo(coord)
-                        }
+                        if let coord = proxy.convert(screenPoint, from: .local) { movePinTo(coord) }
                     }
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -214,8 +170,7 @@ struct MapLocationPicker: View {
                             Label(addressLabel, systemImage: "mappin")
                         }
                     }
-                    .font(.caption)
-                    .multilineTextAlignment(.center)
+                    .font(.caption).multilineTextAlignment(.center)
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(.ultraThinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -229,11 +184,8 @@ struct MapLocationPicker: View {
                         Spacer()
                         Button { jumpToUserLocation() } label: {
                             Image(systemName: "location.fill")
-                                .foregroundColor(.brand)
-                                .padding(14)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Circle())
-                                .shadow(radius: 4)
+                                .foregroundColor(.brand).padding(14)
+                                .background(.ultraThinMaterial).clipShape(Circle()).shadow(radius: 4)
                         }
                         .padding(.trailing, 16).padding(.bottom, 40)
                     }
@@ -264,10 +216,7 @@ struct MapLocationPicker: View {
                 guard !didCenterOnUser, let loc else { return }
                 didCenterOnUser = true
                 let coord = loc.coordinate
-                cameraPosition = .region(MKCoordinateRegion(
-                    center: coord,
-                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                ))
+                cameraPosition = .region(MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))
                 movePinTo(coord)
             }
         }
@@ -276,10 +225,7 @@ struct MapLocationPicker: View {
     private func jumpToUserLocation() {
         guard let coord = locManager.lastLocation?.coordinate else { return }
         withAnimation {
-            cameraPosition = .region(MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-            ))
+            cameraPosition = .region(MKCoordinateRegion(center: coord, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)))
         }
         movePinTo(coord)
     }
@@ -288,13 +234,10 @@ struct MapLocationPicker: View {
     }
     private func reverseGeocode(_ coord: CLLocationCoordinate2D) {
         isResolving = true
-        CLGeocoder().reverseGeocodeLocation(
-            CLLocation(latitude: coord.latitude, longitude: coord.longitude)
-        ) { marks, _ in
+        CLGeocoder().reverseGeocodeLocation(CLLocation(latitude: coord.latitude, longitude: coord.longitude)) { marks, _ in
             isResolving = false
             if let p = marks?.first {
-                addressLabel = [p.name, p.locality, p.country]
-                    .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
+                addressLabel = [p.name, p.locality, p.country].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: ", ")
             }
         }
     }
@@ -308,26 +251,20 @@ struct MiniMapPreview: UIViewRepresentable {
         return m
     }
     func updateUIView(_ map: MKMapView, context: Context) {
-        map.setRegion(MKCoordinateRegion(
-            center: coordinate,
-            span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-        ), animated: false)
+        map.setRegion(MKCoordinateRegion(center: coordinate, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)), animated: false)
         map.removeAnnotations(map.annotations)
         let p = MKPointAnnotation(); p.coordinate = coordinate; map.addAnnotation(p)
     }
 }
 
-// MARK: - Add Report View
+// MARK: - Report Pet View
 struct ReportPetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
-    
+
     let preselectedImage: UIImage?
-    
-    init(preselectedImage: UIImage? = nil) {
-        self.preselectedImage = preselectedImage
-    }
-    
+    init(preselectedImage: UIImage? = nil) { self.preselectedImage = preselectedImage }
+
     @StateObject private var viewModel = AddReportViewModel()
     @State private var selectedPhoto: PhotosPickerItem? = nil
     @State private var petImage: Image?                 = nil
@@ -337,14 +274,9 @@ struct ReportPetView: View {
     @State private var showEyePicker                    = false
     @State private var showLocationPicker               = false
     @State private var goToReward                       = false
-    @State private var showAISuccess                    = false
 
-    var cardBg: Color {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.97, green: 0.95, blue: 0.91)
-    }
-    var pageBg: Color {
-        colorScheme == .dark ? Color(.systemBackground) : Color(red: 0.99, green: 0.98, blue: 0.96)
-    }
+    var cardBg: Color { colorScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.97, green: 0.95, blue: 0.91) }
+    var pageBg: Color { colorScheme == .dark ? Color(.systemBackground)          : Color(red: 0.99, green: 0.98, blue: 0.96) }
     var selectedEye: EyeOption? { allEyeOptions.first { $0.id == selectedEyeID } }
 
     var body: some View {
@@ -355,15 +287,11 @@ struct ReportPetView: View {
 
                     // Found / Lost Switcher
                     HStack(spacing: 0) {
-                        SegmentButton(label: "Found a Pet", icon: "pawprint",
-                                      isSelected: reportType == .found) {
-                            reportType = .found
-                            viewModel.selectedReportType = "found"
+                        SegmentButton(label: "Found a Pet", icon: "pawprint",      isSelected: reportType == .found) {
+                            reportType = .found; viewModel.selectedReportType = "found"
                         }
-                        SegmentButton(label: "Lost a Pet",  icon: "pawprint.fill",
-                                      isSelected: reportType == .lost)  {
-                            reportType = .lost
-                            viewModel.selectedReportType = "lost"
+                        SegmentButton(label: "Lost a Pet",  icon: "pawprint.fill", isSelected: reportType == .lost) {
+                            reportType = .lost;  viewModel.selectedReportType = "lost"
                         }
                     }
                     .background(cardBg)
@@ -381,7 +309,8 @@ struct ReportPetView: View {
                                     .frame(height: 90).clipShape(RoundedRectangle(cornerRadius: 14))
                             } else {
                                 HStack(spacing: 14) {
-                                    RoundedRectangle(cornerRadius: 10).fill(colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(white: 0.90))
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(white: 0.90))
                                         .frame(width: 58, height: 58)
                                         .overlay(Image(systemName: "camera").foregroundColor(.secondary))
                                     VStack(alignment: .leading, spacing: 2) {
@@ -401,67 +330,10 @@ struct ReportPetView: View {
                                 await MainActor.run {
                                     petImage = Image(uiImage: ui)
                                     viewModel.selectedPhoto = ui
-                                    viewModel.analyzePhoto()
                                 }
                             }
                         }
                     }
-
-                    // AI Detected Features Inputs
-                    VStack(alignment: .leading, spacing: 16) {
-                        SectionLabel("Pet Features (AI Auto-Filled)")
-                        
-                        // Breed
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Breed").font(.caption).foregroundColor(.secondary)
-                            TextField("e.g. Persian, Siamese, Arabian Mau", text: $viewModel.breed)
-                                .font(.subheadline).padding()
-                                .background(cardBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
-                        }
-                        
-                        // Fur Colors
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Fur Colors").font(.caption).foregroundColor(.secondary)
-                            TextField("e.g. White, Black, Orange", text: $viewModel.furColors)
-                                .font(.subheadline).padding()
-                                .background(cardBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
-                        }
-                        
-                        // Pattern
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Pattern").font(.caption).foregroundColor(.secondary)
-                            TextField("e.g. Tabby, Solid, Calico", text: $viewModel.pattern)
-                                .font(.subheadline).padding()
-                                .background(cardBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
-                        }
-                        
-                        // Ear Type
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Ear Type").font(.caption).foregroundColor(.secondary)
-                            TextField("e.g. Pointed, Folded", text: $viewModel.earType)
-                                .font(.subheadline).padding()
-                                .background(cardBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
-                        }
-                        
-                        // Size
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Size").font(.caption).foregroundColor(.secondary)
-                            TextField("e.g. Small, Medium, Large", text: $viewModel.size)
-                                .font(.subheadline).padding()
-                                .background(cardBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
-                        }
-                    }
-                    .padding(.vertical, 8)
 
                     // Pet Name
                     VStack(alignment: .leading, spacing: 6) {
@@ -488,14 +360,8 @@ struct ReportPetView: View {
                     // Gender
                     SectionLabel("Gender")
                     HStack(spacing: 12) {
-                        GenderButton(label: "Male",   icon: "♂", isSelected: gender == .male) {
-                            gender = .male
-                            viewModel.selectedGender = "Male"
-                        }
-                        GenderButton(label: "Female", icon: "♀", isSelected: gender == .female) {
-                            gender = .female
-                            viewModel.selectedGender = "Female"
-                        }
+                        GenderButton(label: "Male",   icon: "♂", isSelected: gender == .male)   { gender = .male;   viewModel.selectedGender = "Male" }
+                        GenderButton(label: "Female", icon: "♀", isSelected: gender == .female) { gender = .female; viewModel.selectedGender = "Female" }
                     }
 
                     // Eye Color
@@ -504,10 +370,8 @@ struct ReportPetView: View {
                         Button { showEyePicker = true } label: {
                             HStack(spacing: 12) {
                                 if let eye = selectedEye {
-                                    Image(eye.assetName)
-                                        .resizable().scaledToFill()
-                                        .frame(width: 32, height: 32)
-                                        .clipShape(Circle())
+                                    Image(eye.assetName).resizable().scaledToFill()
+                                        .frame(width: 32, height: 32).clipShape(Circle())
                                         .overlay(Circle().strokeBorder(Color.brand, lineWidth: 1.5))
                                     Text(eye.name).font(.subheadline).foregroundColor(.primary)
                                 } else {
@@ -516,17 +380,13 @@ struct ReportPetView: View {
                                 }
                                 Spacer()
                                 if selectedEye != nil {
-                                    Button {
-                                        selectedEyeID = nil
-                                        viewModel.eyeColor = ""
-                                    } label: {
+                                    Button { selectedEyeID = nil; viewModel.eyeColor = "" } label: {
                                         Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                                     }
                                 }
                                 Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
                             }
-                            .padding()
-                            .background(cardBg)
+                            .padding().background(cardBg)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
                         }
@@ -534,10 +394,9 @@ struct ReportPetView: View {
                         .sheet(isPresented: $showEyePicker) {
                             EyePickerSheet(selectedID: $selectedEyeID)
                                 .onChange(of: selectedEyeID) { _, id in
-                                    if let eye = allEyeOptions.first(where: { $0.id == id }) {
-                                        if viewModel.eyeColor != eye.name {
-                                            viewModel.eyeColor = eye.name
-                                        }
+                                    if let eye = allEyeOptions.first(where: { $0.id == id }),
+                                       viewModel.eyeColor != eye.name {
+                                        viewModel.eyeColor = eye.name
                                     }
                                 }
                         }
@@ -563,7 +422,8 @@ struct ReportPetView: View {
                             }
                             VStack {
                                 Spacer()
-                                HStack { Spacer()
+                                HStack {
+                                    Spacer()
                                     Text("\(viewModel.description.count)/300").font(.caption2).foregroundColor(.secondary).padding(8)
                                 }
                             }.frame(height: 115)
@@ -582,9 +442,7 @@ struct ReportPetView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
                         }
-                        Button {
-                            showLocationPicker = true
-                        } label: {
+                        Button { showLocationPicker = true } label: {
                             HStack {
                                 Text(viewModel.locationName.isEmpty ? "Select location" : viewModel.locationName)
                                     .font(.subheadline)
@@ -604,7 +462,7 @@ struct ReportPetView: View {
                         }
                     }
 
-                    // Reward banner (Lost only)
+                    // Reward banner (Lost only) - optional
                     if reportType == .lost {
                         Button { goToReward = true } label: {
                             HStack(spacing: 12) {
@@ -623,26 +481,16 @@ struct ReportPetView: View {
                         }
                     }
 
-                    // Main Post/Continue Button
-                    Button {
-                        if reportType == .lost {
-                            goToReward = true
-                        } else {
-                            viewModel.saveReport()
-                        }
-                    } label: {
+                    // Post Button
+                    Button { viewModel.saveReport() } label: {
                         if viewModel.isSaving {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .frame(maxWidth: .infinity).padding()
-                                .background(Color.brand)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .background(Color.brand).clipShape(RoundedRectangle(cornerRadius: 14))
                         } else {
-                            Text(reportType == .lost ? "Continue" : "Post")
-                                .font(.headline).foregroundColor(.white)
+                            Text("Post").font(.headline).foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding()
-                                .background(Color.brand)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .background(Color.brand).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                     }
                     .padding(.top, 4).padding(.bottom, 24)
@@ -651,87 +499,30 @@ struct ReportPetView: View {
                 .padding(.horizontal, 16).padding(.top, 12)
             }
             .onTapGesture {
-                UIApplication.shared.sendAction(
-                    #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .onChange(of: viewModel.eyeColor) { _, newColor in
                 let normalized = newColor.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                 if normalized.isEmpty { return }
-                
                 let foundID: UUID?
-                if let foundEye = allEyeOptions.first(where: { $0.name.lowercased() == normalized }) {
-                    foundID = foundEye.id
-                } else if let foundEye = allEyeOptions.first(where: { normalized.contains($0.name.lowercased()) || $0.name.lowercased().contains(normalized) }) {
-                    foundID = foundEye.id
+                if let e = allEyeOptions.first(where: { $0.name.lowercased() == normalized }) {
+                    foundID = e.id
+                } else if let e = allEyeOptions.first(where: { normalized.contains($0.name.lowercased()) || $0.name.lowercased().contains(normalized) }) {
+                    foundID = e.id
+                } else if normalized.contains("yellow") || normalized.contains("gold") {
+                    foundID = allEyeOptions.first(where: { $0.name == "Amber" })?.id
+                } else if normalized.contains("green") {
+                    foundID = allEyeOptions.first(where: { $0.name == "Green" })?.id
+                } else if normalized.contains("blue") {
+                    foundID = allEyeOptions.first(where: { $0.name == "Blue" })?.id
+                } else if normalized.contains("brown") {
+                    foundID = allEyeOptions.first(where: { $0.name == "Brown" })?.id
+                } else if normalized.contains("gray") || normalized.contains("grey") {
+                    foundID = allEyeOptions.first(where: { $0.name == "Gray" })?.id
                 } else {
-                    // Fallback heuristics
-                    if normalized.contains("yellow") || normalized.contains("gold") {
-                        foundID = allEyeOptions.first(where: { $0.name == "Amber" })?.id
-                    } else if normalized.contains("green") {
-                        foundID = allEyeOptions.first(where: { $0.name == "Green" })?.id
-                    } else if normalized.contains("blue") {
-                        foundID = allEyeOptions.first(where: { $0.name == "Blue" })?.id
-                    } else if normalized.contains("brown") {
-                        foundID = allEyeOptions.first(where: { $0.name == "Brown" })?.id
-                    } else if normalized.contains("gray") || normalized.contains("grey") {
-                        foundID = allEyeOptions.first(where: { $0.name == "Gray" })?.id
-                    } else {
-                        foundID = nil
-                    }
+                    foundID = nil
                 }
-                
-                if let foundID, selectedEyeID != foundID {
-                    selectedEyeID = foundID
-                }
-            }
-            .onChange(of: viewModel.isAnalyzing) { old, isAnalyzing in
-                if old && !isAnalyzing {
-                    // Just finished analysis
-                    if !viewModel.breed.isEmpty {
-                        withAnimation {
-                            showAISuccess = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation {
-                                showAISuccess = false
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // AI Analysis Blur Overlay
-            if viewModel.isAnalyzing {
-                ZStack {
-                    Color.black.opacity(0.45).ignoresSafeArea()
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            .scaleEffect(1.5)
-                        Text("AI is extracting cat features...")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                }
-            }
-            
-            // AI Success Overlay
-            if showAISuccess {
-                ZStack {
-                    Color.black.opacity(0.45).ignoresSafeArea()
-                    VStack(spacing: 16) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 64))
-                            .foregroundColor(.green)
-                        Text("Features Extracted Successfully!")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                    }
-                    .padding(24)
-                    .background(Color(.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .shadow(radius: 10)
-                }
+                if let foundID, selectedEyeID != foundID { selectedEyeID = foundID }
             }
         }
         .navigationTitle("Report a Pet")
@@ -747,47 +538,32 @@ struct ReportPetView: View {
                 }
             }
         }
-        .navigationDestination(isPresented: $goToReward) {
-            AddRewardView(viewModel: viewModel)
-        }
-        .onChange(of: viewModel.saveSuccess) { _, success in
-            if success {
-                dismiss()
-            }
-        }
+        .navigationDestination(isPresented: $goToReward) { AddRewardView(viewModel: viewModel) }
+        .onChange(of: viewModel.saveSuccess) { _, success in if success { dismiss() } }
         .alert("Error", isPresented: Binding<Bool>(
             get: { viewModel.saveError != nil },
             set: { _ in viewModel.saveError = nil }
         )) {
             Button("OK") { viewModel.saveError = nil }
-        } message: {
-            Text(viewModel.saveError ?? "")
-        }
+        } message: { Text(viewModel.saveError ?? "") }
         .onAppear {
             if let preselectedImage {
-                self.petImage = Image(uiImage: preselectedImage)
+                petImage = Image(uiImage: preselectedImage)
                 viewModel.selectedPhoto = preselectedImage
-                viewModel.analyzePhoto()
             }
         }
     }
 }
 
-// MARK: - Screen 2: Add a Reward (Simplified, no payment required)
+// MARK: - Add Reward View
 struct AddRewardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject var viewModel: AddReportViewModel
 
-    var cardBg: Color  {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.97, green: 0.95, blue: 0.91)
-    }
-    var pageBg: Color  {
-        colorScheme == .dark ? Color(.systemBackground) : Color(red: 0.99, green: 0.98, blue: 0.96)
-    }
-    var boostBg: Color {
-        colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(red: 1.00, green: 0.97, blue: 0.88)
-    }
+    var cardBg:  Color { colorScheme == .dark ? Color(.secondarySystemBackground)  : Color(red: 0.97, green: 0.95, blue: 0.91) }
+    var pageBg:  Color { colorScheme == .dark ? Color(.systemBackground)           : Color(red: 0.99, green: 0.98, blue: 0.96) }
+    var boostBg: Color { colorScheme == .dark ? Color(.tertiarySystemBackground)   : Color(red: 1.00, green: 0.97, blue: 0.88) }
 
     var rewardValue:     Double { Double(viewModel.rewardAmount) ?? 0 }
     var rewardFormatted: String { String(format: "%.0f", rewardValue) }
@@ -799,7 +575,6 @@ struct AddRewardView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
 
-                    // Header
                     HStack(spacing: 12) {
                         ZStack {
                             Circle().fill(Color.brand.opacity(0.15)).frame(width: 46, height: 46)
@@ -813,17 +588,12 @@ struct AddRewardView: View {
                     }
                     .padding().background(cardBg).clipShape(RoundedRectangle(cornerRadius: 14))
 
-                    // Reward Amount Input
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Reward Amount").font(.subheadline).bold()
-                        Text("Reserved fully for whoever finds your pet.")
-                            .font(.caption).foregroundColor(.secondary)
+                        Text("Reserved fully for whoever finds your pet.").font(.caption).foregroundColor(.secondary)
 
                         HStack(alignment: .center, spacing: 0) {
-                            Text("SAR")
-                                .font(.headline).bold()
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 14)
+                            Text("SAR").font(.headline).bold().foregroundColor(.secondary).padding(.horizontal, 14)
                             Divider().frame(height: 28)
                             TextField("0", text: $viewModel.rewardAmount)
                                 .keyboardType(.decimalPad)
@@ -832,72 +602,48 @@ struct AddRewardView: View {
                                 .padding(.horizontal, 14)
                             Spacer()
                         }
-                        .frame(height: 64)
-                        .background(cardBg)
+                        .frame(height: 64).background(cardBg)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(
-                            canPay ? Color.brand : Color.adaptiveBorder,
-                            lineWidth: canPay ? 2 : 1))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(canPay ? Color.brand : Color.adaptiveBorder, lineWidth: canPay ? 2 : 1))
                     }
 
-                    // Reward Info card
                     if canPay {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Image(systemName: "info.circle.fill").foregroundColor(.brand)
-                                Text("Reward Promise")
-                                    .font(.subheadline).bold()
+                                Text("Reward Promise").font(.subheadline).bold()
                             }
                             Text("Your promised reward of \(rewardFormatted) SAR will be displayed publicly on the listing to help motivate finders. You do not need to make any payment now.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                .font(.caption).foregroundColor(.secondary)
                         }
-                        .padding()
-                        .background(cardBg)
+                        .padding().background(cardBg)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
                         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.brand.opacity(0.35), lineWidth: 1))
                     }
 
-                    // Priority details banner
                     VStack(alignment: .leading, spacing: 12) {
                         HStack(spacing: 10) {
-                            Image(systemName: "bolt.fill")
-                                .foregroundColor(Color.brand)
-                                .font(.subheadline)
-                            Text("Highlight Features")
-                                .font(.subheadline).bold()
+                            Image(systemName: "bolt.fill").foregroundColor(Color.brand).font(.subheadline)
+                            Text("Highlight Features").font(.subheadline).bold()
                         }
-
                         VStack(spacing: 8) {
-                            BoostFeatureRow(icon: "flame.fill",
-                                           color: Color(red: 0.95, green: 0.45, blue: 0.15),
-                                           text: "Your post will be styled with special accents")
-                            BoostFeatureRow(icon: "star.fill",
-                                           color: Color.brand,
-                                           text: "Reward badge shown clearly on card and details")
+                            BoostFeatureRow(icon: "flame.fill", color: Color(red: 0.95, green: 0.45, blue: 0.15), text: "Your post will be styled with special accents")
+                            BoostFeatureRow(icon: "star.fill",  color: Color.brand, text: "Reward badge shown clearly on card and details")
                         }
                     }
-                    .padding(16)
-                    .background(boostBg)
+                    .padding(16).background(boostBg)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.brand.opacity(0.25), lineWidth: 1))
 
-                    // Post Button
-                    Button {
-                        viewModel.saveReport()
-                    } label: {
+                    Button { viewModel.saveReport() } label: {
                         if viewModel.isSaving {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
                                 .frame(maxWidth: .infinity).padding()
-                                .background(Color.brand)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .background(Color.brand).clipShape(RoundedRectangle(cornerRadius: 14))
                         } else {
-                            Text("Post Report")
-                                .font(.headline).foregroundColor(.white)
+                            Text("Post Report").font(.headline).foregroundColor(.white)
                                 .frame(maxWidth: .infinity).padding()
-                                .background(Color.brand)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .background(Color.brand).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                     }
                     .padding(.top, 4).padding(.bottom, 24)
@@ -908,38 +654,25 @@ struct AddRewardView: View {
         }
         .navigationTitle("Add a Reward")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: viewModel.saveSuccess) { _, success in
-            if success {
-                dismiss()
-            }
-        }
+        .onChange(of: viewModel.saveSuccess) { _, success in if success { dismiss() } }
         .alert("Error", isPresented: Binding<Bool>(
             get: { viewModel.saveError != nil },
             set: { _ in viewModel.saveError = nil }
         )) {
             Button("OK") { viewModel.saveError = nil }
-        } message: {
-            Text(viewModel.saveError ?? "")
-        }
+        } message: { Text(viewModel.saveError ?? "") }
     }
 }
 
 // MARK: - UI Sub-components
 struct SegmentButton: View {
-    let label: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-
+    let label: String; let icon: String; let isSelected: Bool; let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: icon)
-                Text(label).font(.subheadline).bold()
-            }
-            .foregroundColor(isSelected ? .white : .primary)
-            .frame(maxWidth: .infinity).padding(.vertical, 14)
-            .background(isSelected ? Color.brand : Color.clear)
+            HStack(spacing: 8) { Image(systemName: icon); Text(label).font(.subheadline).bold() }
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(isSelected ? Color.brand : Color.clear)
         }
         .buttonStyle(.plain)
     }
@@ -947,32 +680,22 @@ struct SegmentButton: View {
 
 struct GenderButton: View {
     @Environment(\.colorScheme) var colorScheme
-    let label: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-
+    let label: String; let icon: String; let isSelected: Bool; let action: () -> Void
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Text(icon).font(.title3)
-                Text(label).font(.subheadline).bold()
-            }
-            .foregroundColor(isSelected ? .white : .primary)
-            .frame(maxWidth: .infinity).padding(.vertical, 12)
-            .background(isSelected ? Color.brand : (colorScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.97, green: 0.95, blue: 0.91)))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
+            HStack(spacing: 6) { Text(icon).font(.title3); Text(label).font(.subheadline).bold() }
+                .foregroundColor(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                .background(isSelected ? Color.brand : (colorScheme == .dark ? Color(.secondarySystemBackground) : Color(red: 0.97, green: 0.95, blue: 0.91)))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
 }
 
 struct BoostFeatureRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-
+    let icon: String; let color: Color; let text: String
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: icon).foregroundColor(color).font(.subheadline)
@@ -985,7 +708,5 @@ struct BoostFeatureRow: View {
 struct SectionLabel: View {
     let text: String
     init(_ text: String) { self.text = text }
-    var body: some View {
-        Text(text).font(.subheadline).bold().foregroundColor(.primary)
-    }
+    var body: some View { Text(text).font(.subheadline).bold().foregroundColor(.primary) }
 }

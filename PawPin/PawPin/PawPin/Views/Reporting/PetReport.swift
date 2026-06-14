@@ -58,21 +58,19 @@ struct ReportCardView: View {
         colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(red: 0.96, green: 0.96, blue: 0.97)
     }
 
-    // Show pet name only to the owner
     var isOwner: Bool { report.viewerID == report.ownerID }
-    
+
     private func contactOwner() {
         guard let currentUserId = AuthManager.shared.currentUserID else { return }
         guard let ownerUUID = UUID(uuidString: report.ownerID) else { return }
         guard ownerUUID != currentUserId else { return }
-        
+
         Task {
             do {
                 let chatSession = try await ChatManager.shared.getOrCreateChat(
                     otherUserId: ownerUUID,
                     reportId: UUID(uuidString: report.id)
                 )
-                
                 let preview = ChatPreviewUI(
                     id: chatSession.id,
                     chatSession: chatSession,
@@ -83,10 +81,7 @@ struct ReportCardView: View {
                     timeAgo: "Just now",
                     isUnread: false
                 )
-                
-                await MainActor.run {
-                    self.activeChat = preview
-                }
+                await MainActor.run { self.activeChat = preview }
             } catch {
                 print("Failed to open chat: \(error)")
             }
@@ -95,8 +90,8 @@ struct ReportCardView: View {
 
     var timeSincePosted: String {
         let diff = Date().timeIntervalSince(report.postedAt)
-        if diff < 3600   { return "\(Int(diff / 60)) mins ago" }
-        if diff < 86400  { return "\(Int(diff / 3600)) hrs ago" }
+        if diff < 3600  { return "\(Int(diff / 60)) mins ago" }
+        if diff < 86400 { return "\(Int(diff / 3600)) hrs ago" }
         return "\(Int(diff / 86400)) days ago"
     }
 
@@ -104,7 +99,7 @@ struct ReportCardView: View {
         guard report.isHighlighted, let expiry = report.highlightExpiry else { return nil }
         let remaining = expiry.timeIntervalSinceNow
         guard remaining > 0 else { return nil }
-        let hrs = Int(remaining / 3600)
+        let hrs  = Int(remaining / 3600)
         let mins = Int((remaining.truncatingRemainder(dividingBy: 3600)) / 60)
         return hrs > 0 ? "\(hrs)h \(mins)m left" : "\(mins)m left"
     }
@@ -120,20 +115,13 @@ struct ReportCardView: View {
                             AsyncImage(url: url) { phase in
                                 switch phase {
                                 case .empty:
-                                    ProgressView()
-                                        .frame(height: 300)
+                                    ProgressView().frame(height: 300)
                                 case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
+                                    image.resizable().scaledToFill()
                                 case .failure:
                                     Rectangle()
                                         .fill(Color(red: 0.92, green: 0.88, blue: 0.82))
-                                        .overlay(
-                                            Image(systemName: "pawprint.fill")
-                                                .font(.system(size: 60))
-                                                .foregroundColor(Color.brand.opacity(0.4))
-                                        )
+                                        .overlay(Image(systemName: "pawprint.fill").font(.system(size: 60)).foregroundColor(Color.brand.opacity(0.4)))
                                 @unknown default:
                                     EmptyView()
                                 }
@@ -141,24 +129,15 @@ struct ReportCardView: View {
                         } else {
                             Rectangle()
                                 .fill(Color(red: 0.92, green: 0.88, blue: 0.82))
-                                .overlay(
-                                    Image(systemName: "pawprint.fill")
-                                        .font(.system(size: 60))
-                                        .foregroundColor(Color.brand.opacity(0.4))
-                                )
+                                .overlay(Image(systemName: "pawprint.fill").font(.system(size: 60)).foregroundColor(Color.brand.opacity(0.4)))
                         }
                     }
                     .frame(height: 300)
                     .clipped()
 
-                    // Gradient overlay
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.35), Color.clear],
-                        startPoint: .top, endPoint: .center
-                    )
-                    .frame(height: 300)
+                    LinearGradient(colors: [Color.black.opacity(0.35), Color.clear], startPoint: .top, endPoint: .center)
+                        .frame(height: 300)
 
-                    // Back button
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
@@ -170,7 +149,6 @@ struct ReportCardView: View {
                     }
                     .padding(.top, 56).padding(.leading, 16)
 
-                    // Highlight badge (top right)
                     if let remaining = highlightTimeRemaining {
                         VStack {
                             HStack {
@@ -191,41 +169,27 @@ struct ReportCardView: View {
                     }
                 }
 
-                // White card content
                 VStack(alignment: .leading, spacing: 0) {
 
-                    // Name row + reward badge
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
                             if let name = report.petName, !name.isEmpty {
-                                Text(name)
-                                    .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(.primary)
+                                Text(name).font(.system(size: 32, weight: .bold)).foregroundColor(.primary)
                             } else {
                                 Text(report.type == .lost ? "Lost Pet" : "Found Pet")
-                                    .font(.system(size: 32, weight: .bold))
-                                    .foregroundColor(.primary)
+                                    .font(.system(size: 32, weight: .bold)).foregroundColor(.primary)
                             }
-
                             HStack(spacing: 4) {
-                                Text("Last seen")
-                                    .font(.subheadline).foregroundColor(.secondary)
-                                Text(timeSincePosted)
-                                    .font(.subheadline).bold().foregroundColor(Color.brand)
-                                Text("ago")
-                                    .font(.subheadline).foregroundColor(.secondary)
+                                Text("Last seen").font(.subheadline).foregroundColor(.secondary)
+                                Text(timeSincePosted).font(.subheadline).bold().foregroundColor(Color.brand)
+                                Text("ago").font(.subheadline).foregroundColor(.secondary)
                             }
                         }
-
                         Spacer()
-
-                        // Reward badge
                         if let reward = report.rewardAmount, reward > 0 {
                             HStack(spacing: 6) {
-                                Image(systemName: "pawprint.fill")
-                                    .font(.subheadline).foregroundColor(Color.brand)
-                                Text("\(Int(reward))")
-                                    .font(.title3).bold().foregroundColor(Color.brand)
+                                Image(systemName: "pawprint.fill").font(.subheadline).foregroundColor(Color.brand)
+                                Text("\(Int(reward))").font(.title3).bold().foregroundColor(Color.brand)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 8)
                             .background(Color.brand.opacity(0.12))
@@ -234,7 +198,6 @@ struct ReportCardView: View {
                     }
                     .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 18)
 
-                    // Gender + Eye Color tiles
                     HStack(spacing: 12) {
                         InfoTile(
                             icon: report.gender == .female ? "venus" : "mars",
@@ -242,191 +205,131 @@ struct ReportCardView: View {
                             title: report.gender == .female ? "Female" : (report.gender == .male ? "Male" : "Unknown"),
                             subtitle: "Gender"
                         )
-
                         HStack(spacing: 12) {
                             ZStack {
-                                Circle()
-                                    .fill(Color(red: 0.90, green: 0.95, blue: 0.90))
-                                    .frame(width: 44, height: 44)
+                                Circle().fill(Color(red: 0.90, green: 0.95, blue: 0.90)).frame(width: 44, height: 44)
                                 if let asset = report.eyeAssetName {
-                                    Image(asset)
-                                        .resizable().scaledToFill()
-                                        .frame(width: 36, height: 36)
-                                        .clipShape(Circle())
+                                    Image(asset).resizable().scaledToFill().frame(width: 36, height: 36).clipShape(Circle())
                                 } else {
-                                    Image(systemName: "eye.fill")
-                                        .foregroundColor(Color.brand)
+                                    Image(systemName: "eye.fill").foregroundColor(Color.brand)
                                 }
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(report.eyeColor ?? "Unknown")
-                                    .font(.subheadline).bold()
-                                  Text("Eye color")
-                                    .font(.caption).foregroundColor(.secondary)
+                                Text(report.eyeColor ?? "Unknown").font(.subheadline).bold()
+                                Text("Eye color").font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
                         }
-                        .padding(12)
-                        .background(fieldBg)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .padding(12).background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
                     }
                     .padding(.horizontal, 20).padding(.bottom, 18)
 
-                    // About / Description
                     if !report.description.isEmpty {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
-                                Image(systemName: "doc.text.fill")
-                                    .foregroundColor(Color.brand).font(.subheadline)
+                                Image(systemName: "doc.text.fill").foregroundColor(Color.brand).font(.subheadline)
                                 Text("Description").font(.headline)
                             }
-
                             Text(report.description)
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .lineSpacing(4)
+                                .font(.subheadline).foregroundColor(.secondary).lineSpacing(4)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(14)
-                                .background(fieldBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .padding(14).background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                         .padding(.horizontal, 20).padding(.bottom, 18)
                     }
 
-                    // Location
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 8) {
-                            Image(systemName: "mappin.circle.fill")
-                                .foregroundColor(Color.brand).font(.subheadline)
+                            Image(systemName: "mappin.circle.fill").foregroundColor(Color.brand).font(.subheadline)
                             Text("Location").font(.headline)
                         }
-
                         if let coord = report.coordinate {
                             ZStack(alignment: .bottomTrailing) {
-                                Map(coordinateRegion: $mapRegion,
-                                    annotationItems: [MapPinItem(coordinate: coord)]) { item in
+                                Map(coordinateRegion: $mapRegion, annotationItems: [MapPinItem(coordinate: coord)]) { item in
                                     MapAnnotation(coordinate: item.coordinate) {
-                                        ZStack(alignment: .bottom) {
-                                            VStack(spacing: 0) {
-                                                ZStack {
-                                                    Circle()
-                                                        .fill(Color.brand)
-                                                        .frame(width: 54, height: 54)
-                                                    if let photoStr = report.photoURL, let url = URL(string: photoStr) {
-                                                        AsyncImage(url: url) { image in
-                                                            image.resizable().scaledToFill()
-                                                        } placeholder: {
-                                                            ProgressView()
-                                                        }
-                                                        .frame(width: 46, height: 46)
-                                                        .clipShape(Circle())
+                                        VStack(spacing: 0) {
+                                            ZStack {
+                                                Circle().fill(Color.brand).frame(width: 54, height: 54)
+                                                if let photoStr = report.photoURL, let url = URL(string: photoStr) {
+                                                    AsyncImage(url: url) { img in img.resizable().scaledToFill() } placeholder: { ProgressView() }
+                                                        .frame(width: 46, height: 46).clipShape(Circle())
                                                         .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                                                    } else {
-                                                        Image(systemName: "pawprint.fill")
-                                                            .foregroundColor(.white)
-                                                            .font(.title3)
-                                                    }
+                                                } else {
+                                                    Image(systemName: "pawprint.fill").foregroundColor(.white).font(.title3)
                                                 }
-                                                Image(systemName: "arrowtriangle.down.fill")
-                                                    .foregroundColor(Color.brand)
-                                                    .font(.system(size: 12))
-                                                    .offset(y: -2)
                                             }
+                                            Image(systemName: "arrowtriangle.down.fill")
+                                                .foregroundColor(Color.brand).font(.system(size: 12)).offset(y: -2)
                                         }
                                     }
                                 }
-                                .frame(height: 220)
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
-                                .allowsHitTesting(true)
+                                .frame(height: 220).clipShape(RoundedRectangle(cornerRadius: 16)).allowsHitTesting(true)
 
-                                // Chat button (for non-owners)
                                 if !isOwner {
                                     Button { contactOwner() } label: {
                                         Image(systemName: "bubble.left.fill")
-                                            .font(.title3)
-                                            .foregroundColor(Color.brand)
-                                            .padding(14)
-                                            .background(cardBg)
-                                            .clipShape(Circle())
+                                            .font(.title3).foregroundColor(Color.brand)
+                                            .padding(14).background(cardBg).clipShape(Circle())
                                             .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
                                     }
                                     .padding(12)
                                 }
                             }
-
-                            // Address label
                             if !report.locationName.isEmpty {
                                 HStack(spacing: 6) {
                                     Image(systemName: "mappin").foregroundColor(Color.brand).font(.caption)
-                                    Text(report.locationName)
-                                        .font(.caption).foregroundColor(.secondary)
+                                    Text(report.locationName).font(.caption).foregroundColor(.secondary)
                                 }
                                 .padding(.top, 2)
                             }
                         } else {
                             Text(report.locationName.isEmpty ? "Location not specified" : report.locationName)
                                 .font(.subheadline).foregroundColor(.secondary)
-                                .padding(14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(fieldBg)
-                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                     }
                     .padding(.horizontal, 20).padding(.bottom, 18)
 
-                    // Reward section
                     if let reward = report.rewardAmount, reward > 0 {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
-                                Image(systemName: "gift.fill")
-                                    .foregroundColor(Color.brand).font(.subheadline)
+                                Image(systemName: "gift.fill").foregroundColor(Color.brand).font(.subheadline)
                                 Text("Reward Offered").font(.headline)
                             }
-
                             HStack(spacing: 14) {
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text("\(Int(reward)) SAR")
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundColor(Color.brand)
-                                    Text("Offered by the owner if found")
-                                        .font(.caption).foregroundColor(.secondary)
+                                    Text("\(Int(reward)) SAR").font(.system(size: 28, weight: .bold)).foregroundColor(Color.brand)
+                                    Text("Offered by the owner if found").font(.caption).foregroundColor(.secondary)
                                 }
                                 Spacer()
                                 if !isOwner {
                                     Button { contactOwner() } label: {
-                                        Text("I found it!")
-                                            .font(.subheadline).bold()
-                                            .foregroundColor(.white)
+                                        Text("I found it!").font(.subheadline).bold().foregroundColor(.white)
                                             .padding(.horizontal, 18).padding(.vertical, 10)
-                                            .background(Color.brand)
-                                            .clipShape(Capsule())
+                                            .background(Color.brand).clipShape(Capsule())
                                     }
                                 }
                             }
-                            .padding(16)
-                            .background(Color.brand.opacity(0.08))
+                            .padding(16).background(Color.brand.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.brand.opacity(0.25), lineWidth: 1))
                         }
                         .padding(.horizontal, 20).padding(.bottom, 28)
                     }
 
-                    // Contact button (non-owner, no reward)
                     if !isOwner && (report.rewardAmount ?? 0) == 0 {
                         Button { contactOwner() } label: {
                             HStack(spacing: 8) {
                                 Image(systemName: "bubble.left.fill")
                                 Text("Contact Owner").font(.headline)
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity).padding()
-                            .background(Color.brand)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .foregroundColor(.white).frame(maxWidth: .infinity).padding()
+                            .background(Color.brand).clipShape(RoundedRectangle(cornerRadius: 14))
                         }
                         .padding(.horizontal, 20).padding(.bottom, 28)
                     }
 
-                    // Owner Actions
                     if isOwner {
                         VStack(spacing: 10) {
                             Button {
@@ -434,17 +337,14 @@ struct ReportCardView: View {
                                     do {
                                         try await SupabaseManager.shared.markReportAsFoundAsync(reportID: report.id)
                                         dismiss()
-                                    } catch {
-                                        print("Error marking report as found: \(error)")
-                                    }
+                                    } catch { print("Error marking report as found: \(error)") }
                                 }
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "checkmark.circle.fill")
                                     Text("Mark as Found").font(.headline)
                                 }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity).padding()
+                                .foregroundColor(.white).frame(maxWidth: .infinity).padding()
                                 .background(Color(red: 0.20, green: 0.65, blue: 0.40))
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
@@ -454,9 +354,7 @@ struct ReportCardView: View {
                                     do {
                                         try await SupabaseManager.shared.deleteReportAsync(reportID: report.id)
                                         dismiss()
-                                    } catch {
-                                        print("Error deleting report: \(error)")
-                                    }
+                                    } catch { print("Error deleting report: \(error)") }
                                 }
                             } label: {
                                 HStack(spacing: 8) {
@@ -480,14 +378,8 @@ struct ReportCardView: View {
         .ignoresSafeArea(edges: .top)
         .background(pageBg.ignoresSafeArea())
         .navigationBarHidden(true)
-        .onAppear {
-            showTabBar.wrappedValue = false
-        }
-        .onDisappear {
-            if activeChat == nil {
-                showTabBar.wrappedValue = true
-            }
-        }
+        .onAppear { showTabBar.wrappedValue = false }
+        .onDisappear { if activeChat == nil { showTabBar.wrappedValue = true } }
         .navigationDestination(item: $activeChat) { preview in
             MessageView(chatPreview: preview, shouldRestoreTabBarOnDisappear: false)
         }
@@ -495,7 +387,6 @@ struct ReportCardView: View {
 }
 
 // MARK: - Sub-components
-
 struct InfoTile: View {
     @Environment(\.colorScheme) var colorScheme
     let icon:      String
@@ -510,12 +401,8 @@ struct InfoTile: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                Circle()
-                    .fill(iconColor.opacity(0.12))
-                    .frame(width: 44, height: 44)
-                Image(systemName: icon)
-                    .foregroundColor(iconColor)
-                    .font(.title3)
+                Circle().fill(iconColor.opacity(0.12)).frame(width: 44, height: 44)
+                Image(systemName: icon).foregroundColor(iconColor).font(.title3)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline).bold()
@@ -523,9 +410,7 @@ struct InfoTile: View {
             }
             Spacer()
         }
-        .padding(12)
-        .background(fieldBg)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(12).background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -533,4 +418,3 @@ struct MapPinItem: Identifiable {
     let id = UUID()
     let coordinate: CLLocationCoordinate2D
 }
-
