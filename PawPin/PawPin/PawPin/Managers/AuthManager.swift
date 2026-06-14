@@ -44,30 +44,29 @@ final class AuthManager: ObservableObject {
     var isRegistering: Bool = false
     
     private func listenToAuthChanges() {
-        Task {
-            for await event in SupabaseManager.shared.client.auth.authStateChanges {
-                switch event.event {
-                case .signedIn, .tokenRefreshed:
-                    if self.isRegistering {
+            Task {
+                for await event in SupabaseManager.shared.client.auth.authStateChanges {
+                    switch event.event {
+                    case .signedIn, .tokenRefreshed:
+                        if let session = event.session {
+                            self.isAuthenticated = true
+                            self.currentUserID = session.user.id
+                            await fetchUserProfile(userId: session.user.id)
+                            
+                            // بعد ما يدخل بنجاح، نصفر الفلاق
+                            self.isRegistering = false
+                        }
+                    case .signedOut, .userDeleted:
+                        self.isAuthenticated = false
+                        self.currentUserID = nil
+                        self.currentUserFullName = nil
+                        self.isRegistering = false
+                    default:
                         break
                     }
-                    if let session = event.session {
-                        self.isAuthenticated = true
-                        self.currentUserID = session.user.id
-                        await fetchUserProfile(userId: session.user.id)
-                    }
-                case .signedOut, .userDeleted:
-                    self.isAuthenticated = false
-                    self.currentUserID = nil
-                    self.currentUserFullName = nil
-                    self.isRegistering = false
-                default:
-                    break
                 }
             }
         }
-    }
-    
     // Temporary storage for full name during registration to prevent race conditions
     var pendingRegisterFullName: String? = nil
     

@@ -102,8 +102,7 @@ struct RegisterView: View {
         isLoading = true
         errorMessage = nil
         
-        // Prevent AuthManager from auto-logging in during signup
-        AuthManager.shared.isRegistering = true
+        // 🔥 عدلنا هنا: شلنا السطور القديمة اللي كانت تفعل فلاق المنع لمنع الدخول التلقائي
         AuthManager.shared.pendingRegisterFullName = fullName
         
         Task {
@@ -121,25 +120,16 @@ struct RegisterView: View {
                     let email: String
                 }
                 
-                // Use upsert instead of insert to handle race conditions where AuthManager auto-creates first
+                // حفظ بيانات المستخدم في جدول users العام
                 try await SupabaseManager.shared.client
                     .from("users")
                     .upsert(InsertUser(id: userId, full_name: fullName, email: email))
                     .execute()
                 
-                if response.session != nil {
-                    // Explicitly sign out if a session was created to clean up local state
-                    try? await SupabaseManager.shared.client.auth.signOut()
-                } else {
-                    await MainActor.run {
-                        AuthManager.shared.isRegistering = false
-                    }
-                }
-                
+                // 🔥 التعديل الأهم: شلنا الـ signOut والـ dismiss القديم.
+                // الـ AuthManager الحين راح يلقط الـ .signedIn الإيفينت ويدخله للـ HomeView تلقائياً.
                 await MainActor.run {
                     self.isLoading = false
-                    // Go back to login screen
-                    dismiss()
                 }
             } catch {
                 await MainActor.run {
