@@ -63,7 +63,6 @@ class SupabaseManager {
             size: report.features.size,
             user_id: report.userId,
             latitude: latitude,
-            gender: report.gender,
             longitude: longitude,
             description: description,
             reward_amount: rewardAmount,
@@ -86,7 +85,6 @@ class SupabaseManager {
             .select("*, users(full_name)")
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
@@ -97,7 +95,6 @@ class SupabaseManager {
             .eq("report_type", value: "lost")
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
@@ -108,12 +105,11 @@ class SupabaseManager {
             .eq("user_id", value: userId.uuidString)
             .execute()
             .value
-        
         return response.map { rowToCatReport($0) }
     }
     
     // ─────────────────────────────
-    // DELETE REPORT
+    // DELETE / MARK FOUND
     // ─────────────────────────────
     func deleteReportAsync(reportID: String) async throws {
         try await client
@@ -124,9 +120,7 @@ class SupabaseManager {
     }
     
     func markReportAsFoundAsync(reportID: String) async throws {
-        struct UpdateReport: Codable {
-            let report_type: String
-        }
+        struct UpdateReport: Codable { let report_type: String }
         try await client
             .from("reports")
             .update(UpdateReport(report_type: "found"))
@@ -135,7 +129,7 @@ class SupabaseManager {
     }
     
     // ─────────────────────────────
-    // CONVERT ROW TO CatReport
+    // CONVERT ROW → CatReport
     // ─────────────────────────────
     private func rowToCatReport(_ row: ReportRowWithUser) -> CatReport {
         let furColors = (row.fur_colors ?? "")
@@ -166,8 +160,8 @@ class SupabaseManager {
             date: date,
             userId: row.user_id,
             latitude: row.latitude,
-            gender: row.gender ?? "",
             longitude: row.longitude,
+            gender: row.gender ?? "Unknown",
             description: row.description,
             locationName: row.location_name,
             rewardAmount: row.reward_amount
@@ -182,7 +176,6 @@ class SupabaseManager {
                     report: report,
                     photo: photo,
                     latitude: report.latitude,
-
                     longitude: report.longitude,
                     description: report.description,
                     rewardAmount: report.rewardAmount,
@@ -198,23 +191,15 @@ class SupabaseManager {
     
     func getLostReports(completion: @escaping ([CatReport]) -> Void) {
         Task {
-            do {
-                let reports = try await getLostReportsAsync()
-                completion(reports)
-            } catch {
-                completion([])
-            }
+            do { let reports = try await getLostReportsAsync(); completion(reports) }
+            catch { completion([]) }
         }
     }
     
     func getAllReports(completion: @escaping ([CatReport]) -> Void) {
         Task {
-            do {
-                let reports = try await getAllReportsAsync()
-                completion(reports)
-            } catch {
-                completion([])
-            }
+            do { let reports = try await getAllReportsAsync(); completion(reports) }
+            catch { completion([]) }
         }
     }
 }
@@ -234,7 +219,6 @@ struct InsertReportRow: Codable {
     let size: String
     let user_id: UUID?
     let latitude: Double?
-    let gender: String?
     let longitude: Double?
     let description: String?
     let reward_amount: Double?
@@ -255,8 +239,8 @@ struct ReportRowWithUser: Codable {
     let size: String?
     let user_id: UUID?
     let latitude: Double?
-    let gender: String?
     let longitude: Double?
+    let gender: String?
     let description: String?
     let reward_amount: Double?
     let location_name: String?
