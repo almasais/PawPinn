@@ -39,28 +39,37 @@ extension CatReport {
             coord = nil
         }
 
-        let eyeAssetName: String
-        switch self.features.eyeColor.lowercased() {
-        case "amber":        eyeAssetName = "eye_amber"
-        case "aquamarine":   eyeAssetName = "eye_aquamarine"
-        case "blue / gold":  eyeAssetName = "eye_blue_gold"
-        case "blue gold":    eyeAssetName = "eye_blue_gold"
-        case "blue":         eyeAssetName = "eye_blue"
-        case "blue-gray":    eyeAssetName = "eye_bluegray"
-        case "blue gray":    eyeAssetName = "eye_bluegray"
-        case "brown":        eyeAssetName = "eye_brown"
-        case "copper":       eyeAssetName = "eye_copper"
-        case "gray":         eyeAssetName = "eye_gray"
-        case "green / blue": eyeAssetName = "eye_green_blue"
-        case "green blue":   eyeAssetName = "eye_green_blue"
-        case "green gold":   eyeAssetName = "eye_green_gold"
-        case "green":        eyeAssetName = "eye_green"
-        case "hazel":        eyeAssetName = "eye_hazel"
-        case "olive":        eyeAssetName = "eye_olive"
-        case "turquoise":    eyeAssetName = "eye_turquoise"
-        case "yellow-green": eyeAssetName = "eye_yellowgreen"
-        case "yellow green": eyeAssetName = "eye_yellowgreen"
-        default:             eyeAssetName = "eye_blue"
+        // Map eye color to asset — lowercase comparison handles both "Amber" and "amber"
+        let rawEyeColor = self.features.eyeColor.trimmingCharacters(in: .whitespaces)
+        let eyeAssetName: String?
+
+        if rawEyeColor.isEmpty {
+            eyeAssetName = nil
+        } else {
+            switch rawEyeColor.lowercased() {
+            case "amber":               eyeAssetName = "eye_amber"
+            case "aquamarine":          eyeAssetName = "eye_aquamarine"
+            case "blue / gold",
+                 "blue gold",
+                 "blue/gold":           eyeAssetName = "eye_blue_gold"
+            case "blue":                eyeAssetName = "eye_blue"
+            case "blue-gray",
+                 "blue gray",
+                 "blue/gray":           eyeAssetName = "eye_bluegray"
+            case "brown":               eyeAssetName = "eye_brown"
+            case "copper":              eyeAssetName = "eye_copper"
+            case "gray", "grey":        eyeAssetName = "eye_gray"
+            case "green / blue",
+                 "green blue",
+                 "green/blue":          eyeAssetName = "eye_green_blue"
+            case "green":               eyeAssetName = "eye_green"
+            case "hazel":               eyeAssetName = "eye_hazel"
+            case "olive":               eyeAssetName = "eye_olive"
+            case "turquoise":           eyeAssetName = "eye_turquoise"
+            case "yellow-green",
+                 "yellow green":        eyeAssetName = "eye_yellowgreen"
+            default:                    eyeAssetName = nil
+            }
         }
 
         let petGender: PetGender
@@ -70,8 +79,11 @@ extension CatReport {
         default:       petGender = .unknown
         }
 
-        let desc     = self.description ?? "No description provided."
-        let location = self.locationName ?? "Unknown location"
+        let desc     = self.description ?? ""
+        let location = self.locationName ?? ""
+
+        // Use the original casing for display (e.g. "Amber" not "amber")
+        let displayEyeColor = rawEyeColor.isEmpty ? nil : rawEyeColor
 
         return PetReport(
             id: self.id,
@@ -80,7 +92,7 @@ extension CatReport {
             photoURL: self.photoURL,
             localImage: nil,
             gender: petGender,
-            eyeColor: self.features.eyeColor,
+            eyeColor: displayEyeColor,
             eyeAssetName: eyeAssetName,
             description: desc,
             locationName: location,

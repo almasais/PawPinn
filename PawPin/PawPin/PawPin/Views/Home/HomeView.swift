@@ -49,7 +49,7 @@ struct HomeView: View {
                 // MARK: Header
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("PinPaw 🐾")
+                        Text("PawPin 🐾")
                             .font(.title).bold()
                         
                         Text("Find lost pets near you")

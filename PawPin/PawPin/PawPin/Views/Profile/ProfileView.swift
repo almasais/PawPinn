@@ -10,69 +10,59 @@ struct ProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.dismiss) private var dismiss
     @Environment(\.showTabBar) private var showTabBar
-    
+
     @StateObject private var viewModel = ProfileViewModel()
     @ObservedObject private var authManager = AuthManager.shared
-    @State private var showAddReport = false
-    @State private var showSettings = false
-    @State private var showEditProfile = false
+    @State private var showAddReport    = false
+    @State private var showSettings     = false
+    @State private var showEditProfile  = false
     @State private var editedName: String = ""
     @State private var pickedPhotoItem: PhotosPickerItem? = nil
     @State private var pickedUIImage: UIImage? = nil
-    @State private var isSavingProfile = false
-    
+    @State private var isSavingProfile  = false
+
+    // Shows picked image first, then saved image from server
+    var displayImage: UIImage? {
+        pickedUIImage ?? viewModel.profileImage
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Custom Navigation Bar
             HStack {
-                Button {
-                    dismiss()
-                } label: {
+                Button { dismiss() } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("Back")
-                            .font(.system(size: 16))
+                        Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
+                        Text("Back").font(.system(size: 16))
                     }
                     .foregroundColor(Color.brand)
                 }
-                
                 Spacer()
-                
-                Text("Profile")
-                    .font(.headline)
-                
+                Text("Profile").font(.headline)
                 Spacer()
-                
                 HStack(spacing: 16) {
                     Button {
                         showEditProfile = true
                         editedName = authManager.currentUserFullName ?? ""
+                        pickedUIImage = nil
                     } label: {
-                        Image(systemName: "pencil.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(Color.brand)
+                        Image(systemName: "pencil.circle.fill").font(.title3).foregroundColor(Color.brand)
                     }
-
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .font(.title3)
-                            .foregroundColor(Color.brand)
+                    Button { showSettings = true } label: {
+                        Image(systemName: "gearshape.fill").font(.title3).foregroundColor(Color.brand)
                     }
                 }
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
             .background(colorScheme == .dark ? Color(.systemBackground) : Color.white)
-            
+
             List {
-                // Profile Header Row
+                // Profile Header
                 Section {
                     VStack(spacing: 12) {
                         ZStack {
-                            if let ui = pickedUIImage {
+                            if let ui = displayImage {
                                 Image(uiImage: ui)
                                     .resizable()
                                     .scaledToFill()
@@ -89,32 +79,23 @@ struct ProfileView: View {
                                     )
                             }
                         }
-                        
                         Text(authManager.currentUserFullName ?? "My Profile")
                             .font(.title2).bold()
-                        
                         Text("PawPin Member")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                            .font(.caption).foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                 }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                
+
                 // Stats Row
                 Section {
                     HStack(spacing: 0) {
-                        StatBox(
-                            number: "\(viewModel.lostCount)",
-                            label: "Lost"
-                        )
+                        StatBox(number: "\(viewModel.lostCount)",  label: "Lost")
                         Divider().frame(height: 40)
-                        StatBox(
-                            number: "\(viewModel.foundCount)",
-                            label: "Found"
-                        )
+                        StatBox(number: "\(viewModel.foundCount)", label: "Found")
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -124,12 +105,11 @@ struct ProfileView: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                
-                // User Reports List Header
+
+                // My Reports
                 Section(header: Text("My Reports").font(.footnote).bold()) {
                     if viewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, minHeight: 120)
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
                     } else if viewModel.myReports.isEmpty {
                         EmptyStateView(
                             icon: "cat",
@@ -153,17 +133,15 @@ struct ProfileView: View {
                                         RoundedRectangle(cornerRadius: 10)
                                             .fill(Color(.systemGray5))
                                             .frame(width: 60, height: 60)
-                                            .overlay(Image(systemName: "cat.fill").foregroundColor(.gray))
+                                            .overlay(Image(systemName: "pawprint.fill").foregroundColor(.gray))
                                     }
-                                    
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(report.features.breed)
+                                        Text(report.petName ?? (report.reportType == "lost" ? "Unknown Pet" : "Found Pet"))
                                             .font(.headline)
                                         Text(report.reportType.capitalized)
                                             .font(.subheadline)
                                             .foregroundColor(report.reportType == "lost" ? .red : .green)
                                     }
-                                    
                                     Spacer()
                                 }
                                 .padding(.vertical, 4)
@@ -183,20 +161,15 @@ struct ProfileView: View {
             .listStyle(.plain)
             .background((colorScheme == .dark ? Color(.systemBackground) : Color(red: 0.97, green: 0.97, blue: 0.97)).ignoresSafeArea())
         }
-        .refreshable {
-            viewModel.loadMyReports()
-        }
+        .refreshable { viewModel.loadMyReports() }
         .onAppear {
             showTabBar.wrappedValue = false
             viewModel.loadMyReports()
+            viewModel.loadProfilePhoto()
         }
-        .onDisappear {
-            showTabBar.wrappedValue = true
-        }
+        .onDisappear { showTabBar.wrappedValue = true }
         .sheet(isPresented: $showAddReport) {
-            NavigationStack {
-                ReportPetView()
-            }
+            NavigationStack { ReportPetView() }
         }
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView()
@@ -206,10 +179,9 @@ struct ProfileView: View {
                 Form {
                     Section(header: Text("Profile Photo")) {
                         HStack(spacing: 16) {
-                            if let ui = pickedUIImage {
+                            if let ui = pickedUIImage ?? viewModel.profileImage {
                                 Image(uiImage: ui)
-                                    .resizable()
-                                    .scaledToFill()
+                                    .resizable().scaledToFill()
                                     .frame(width: 72, height: 72)
                                     .clipShape(Circle())
                             } else {
@@ -256,29 +228,36 @@ struct ProfileView: View {
             }
         }
     }
-    
+
     private func saveProfileEdits() async {
         let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
         guard let userId = AuthManager.shared.currentUserID else { return }
-        
+
         await MainActor.run { isSavingProfile = true }
-        
+
         do {
+            // Save name
             try await SupabaseManager.shared.client
                 .from("users")
                 .update(["full_name": name])
                 .eq("id", value: userId.uuidString)
                 .execute()
-            
+
             try await SupabaseManager.shared.client.auth.update(
                 user: UserAttributes(data: ["full_name": .string(name)])
             )
-            
+
+            // Save photo if one was picked
+            if let img = pickedUIImage {
+                try await viewModel.uploadProfilePhoto(img)
+            }
+
             await MainActor.run {
                 AuthManager.shared.currentUserFullName = name
                 showEditProfile = false
                 isSavingProfile = false
+                pickedPhotoItem = nil
             }
         } catch {
             print("Failed to update profile: \(error)")
@@ -287,25 +266,19 @@ struct ProfileView: View {
     }
 }
 
-// ── Stat box component ──
+// ── Stat box ──
 struct StatBox: View {
     let number: String
     let label: String
-    
+
     var body: some View {
         VStack(spacing: 4) {
-            Text(number)
-                .font(.title2).bold()
-                .foregroundColor(Color.brand)
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            Text(number).font(.title2).bold().foregroundColor(Color.brand)
+            Text(label).font(.caption).foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
     }
 }
 
-#Preview {
-    ProfileView()
-}
+#Preview { ProfileView() }

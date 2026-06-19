@@ -38,6 +38,7 @@ let allEyeOptions: [EyeOption] = [
 // MARK: - Eye Picker Sheet
 struct EyePickerSheet: View {
     @Binding var selectedID: UUID?
+    @Binding var selectedEyeName: String  // ✅ directly bind the name
     @Environment(\.dismiss) private var dismiss
 
     let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
@@ -49,6 +50,7 @@ struct EyePickerSheet: View {
                     ForEach(allEyeOptions) { eye in
                         Button {
                             selectedID = eye.id
+                            selectedEyeName = eye.name  // ✅ set name directly on tap
                             dismiss()
                         } label: {
                             VStack(spacing: 6) {
@@ -271,6 +273,7 @@ struct ReportPetView: View {
     @State private var reportType: PetReportType        = .found
     @State private var gender: PetGender                = .unknown
     @State private var selectedEyeID: UUID?             = nil
+    @State private var selectedEyeName: String          = ""  // ✅ local state for eye name
     @State private var showEyePicker                    = false
     @State private var showLocationPicker               = false
     @State private var goToReward                       = false
@@ -287,11 +290,11 @@ struct ReportPetView: View {
 
                     // Found / Lost Switcher
                     HStack(spacing: 0) {
-                        SegmentButton(label: "Found a Pet", icon: "pawprint",      isSelected: reportType == .found) {
+                        SegmentButton(label: "Found a Pet", icon: "pawprint", isSelected: reportType == .found) {
                             reportType = .found; viewModel.selectedReportType = "found"
                         }
-                        SegmentButton(label: "Lost a Pet",  icon: "pawprint.fill", isSelected: reportType == .lost) {
-                            reportType = .lost;  viewModel.selectedReportType = "lost"
+                        SegmentButton(label: "Lost a Pet", icon: "pawprint.fill", isSelected: reportType == .lost) {
+                            reportType = .lost; viewModel.selectedReportType = "lost"
                         }
                     }
                     .background(cardBg)
@@ -360,8 +363,12 @@ struct ReportPetView: View {
                     // Gender
                     SectionLabel("Gender")
                     HStack(spacing: 12) {
-                        GenderButton(label: "Male",   icon: "♂", isSelected: gender == .male)   { gender = .male;   viewModel.selectedGender = "Male" }
-                        GenderButton(label: "Female", icon: "♀", isSelected: gender == .female) { gender = .female; viewModel.selectedGender = "Female" }
+                        GenderButton(label: "Male",   icon: "♂", isSelected: gender == .male) {
+                            gender = .male; viewModel.selectedGender = "Male"
+                        }
+                        GenderButton(label: "Female", icon: "♀", isSelected: gender == .female) {
+                            gender = .female; viewModel.selectedGender = "Female"
+                        }
                     }
 
                     // Eye Color
@@ -380,7 +387,11 @@ struct ReportPetView: View {
                                 }
                                 Spacer()
                                 if selectedEye != nil {
-                                    Button { selectedEyeID = nil; viewModel.eyeColor = "" } label: {
+                                    Button {
+                                        selectedEyeID = nil
+                                        selectedEyeName = ""
+                                        viewModel.eyeColor = ""
+                                    } label: {
                                         Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                                     }
                                 }
@@ -391,15 +402,14 @@ struct ReportPetView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
+                        // ✅ Pass selectedEyeName binding directly into the sheet
                         .sheet(isPresented: $showEyePicker) {
-                            EyePickerSheet(selectedID: $selectedEyeID)
-                                .onChange(of: selectedEyeID) { _, id in
-                                    if let eye = allEyeOptions.first(where: { $0.id == id }),
-                                       viewModel.eyeColor != eye.name {
-                                        viewModel.eyeColor = eye.name
-                                    }
-                                }
+                            EyePickerSheet(selectedID: $selectedEyeID, selectedEyeName: $selectedEyeName)
                         }
+                    }
+                    // ✅ Sync selectedEyeName → viewModel.eyeColor whenever it changes
+                    .onChange(of: selectedEyeName) { _, name in
+                        viewModel.eyeColor = name
                     }
 
                     // Description
@@ -462,7 +472,7 @@ struct ReportPetView: View {
                         }
                     }
 
-                    // Reward banner (Lost only) - optional
+                    // Reward banner (Lost only)
                     if reportType == .lost {
                         Button { goToReward = true } label: {
                             HStack(spacing: 12) {
@@ -500,29 +510,6 @@ struct ReportPetView: View {
             }
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-            }
-            .onChange(of: viewModel.eyeColor) { _, newColor in
-                let normalized = newColor.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-                if normalized.isEmpty { return }
-                let foundID: UUID?
-                if let e = allEyeOptions.first(where: { $0.name.lowercased() == normalized }) {
-                    foundID = e.id
-                } else if let e = allEyeOptions.first(where: { normalized.contains($0.name.lowercased()) || $0.name.lowercased().contains(normalized) }) {
-                    foundID = e.id
-                } else if normalized.contains("yellow") || normalized.contains("gold") {
-                    foundID = allEyeOptions.first(where: { $0.name == "Amber" })?.id
-                } else if normalized.contains("green") {
-                    foundID = allEyeOptions.first(where: { $0.name == "Green" })?.id
-                } else if normalized.contains("blue") {
-                    foundID = allEyeOptions.first(where: { $0.name == "Blue" })?.id
-                } else if normalized.contains("brown") {
-                    foundID = allEyeOptions.first(where: { $0.name == "Brown" })?.id
-                } else if normalized.contains("gray") || normalized.contains("grey") {
-                    foundID = allEyeOptions.first(where: { $0.name == "Gray" })?.id
-                } else {
-                    foundID = nil
-                }
-                if let foundID, selectedEyeID != foundID { selectedEyeID = foundID }
             }
         }
         .navigationTitle("Report a Pet")

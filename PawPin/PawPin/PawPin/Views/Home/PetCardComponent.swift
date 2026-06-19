@@ -16,6 +16,33 @@ struct PetCardComponent: View {
             return "Found Pet"
         }
     }
+
+    // Map eye color name to asset name
+    var eyeAssetName: String? {
+        let raw = report.features.eyeColor.trimmingCharacters(in: .whitespaces)
+        if raw.isEmpty { return nil }
+        switch raw.lowercased() {
+        case "amber":               return "eye_amber"
+        case "aquamarine":          return "eye_aquamarine"
+        case "blue / gold",
+             "blue gold":           return "eye_blue_gold"
+        case "blue":                return "eye_blue"
+        case "blue-gray",
+             "blue gray":           return "eye_bluegray"
+        case "brown":               return "eye_brown"
+        case "copper":              return "eye_copper"
+        case "gray", "grey":        return "eye_gray"
+        case "green / blue",
+             "green blue":          return "eye_green_blue"
+        case "green":               return "eye_green"
+        case "hazel":               return "eye_hazel"
+        case "olive":               return "eye_olive"
+        case "turquoise":           return "eye_turquoise"
+        case "yellow-green",
+             "yellow green":        return "eye_yellowgreen"
+        default:                    return nil
+        }
+    }
     
     var body: some View {
         HStack(spacing: 12) {
@@ -76,12 +103,20 @@ struct PetCardComponent: View {
                     }
                 }
                 
-                // Eye color
+                // Eye color — show asset image instead of yellow eye icon
                 if !report.features.eyeColor.isEmpty {
-                    HStack(spacing: 4) {
-                        Image(systemName: "eye.fill")
-                            .font(.caption2)
-                            .foregroundColor(Color.brand)
+                    HStack(spacing: 5) {
+                        if let asset = eyeAssetName {
+                            Image(asset)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 16, height: 16)
+                                .clipShape(Circle())
+                        } else {
+                            Image(systemName: "eye.fill")
+                                .font(.caption2)
+                                .foregroundColor(Color.brand)
+                        }
                         Text(report.features.eyeColor.capitalized)
                             .font(.caption)
                             .foregroundColor(.secondary)

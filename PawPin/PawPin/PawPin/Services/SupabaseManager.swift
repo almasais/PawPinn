@@ -31,7 +31,7 @@ class SupabaseManager {
             .upload(
                 "\(reportID).jpg",
                 data: imageData,
-                options: FileOptions(contentType: "image/jpeg")
+                options: FileOptions(contentType: "image/jpeg", upsert: true)
             )
         
         let url = try client.storage
@@ -44,7 +44,7 @@ class SupabaseManager {
     // ─────────────────────────────
     // SAVE REPORT
     // ─────────────────────────────
-    func saveReportAsync(report: CatReport, photo: UIImage?, latitude: Double?, longitude: Double?, description: String?, rewardAmount: Double?, locationName: String?, petName: String?) async throws {
+    func saveReportAsync(report: CatReport, photo: UIImage?, latitude: Double?, longitude: Double?, description: String?, rewardAmount: Double?, locationName: String?, petName: String?, gender: String?) async throws {
         var photoURL = report.photoURL
         
         if let photo = photo {
@@ -67,7 +67,8 @@ class SupabaseManager {
             description: description,
             reward_amount: rewardAmount,
             location_name: locationName,
-            pet_name: petName
+            pet_name: petName,
+            gender: gender
         )
         
         try await client
@@ -180,7 +181,8 @@ class SupabaseManager {
                     description: report.description,
                     rewardAmount: report.rewardAmount,
                     locationName: report.locationName,
-                    petName: report.petName
+                    petName: report.petName,
+                    gender: report.gender
                 )
                 completion(true)
             } catch {
@@ -224,6 +226,7 @@ struct InsertReportRow: Codable {
     let reward_amount: Double?
     let location_name: String?
     let pet_name: String?
+    let gender: String?
 }
 
 struct ReportRowWithUser: Codable {

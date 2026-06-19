@@ -13,7 +13,7 @@ import Combine
 @MainActor
 final class AddReportViewModel: ObservableObject {
     @Published var selectedReportType: String = "lost"
-    @Published var selectedGender: String = "Male"
+    @Published var selectedGender: String = "Unknown"
     @Published var eyeColor: String = ""
     @Published var catName: String = ""
     @Published var description: String = ""
@@ -39,10 +39,11 @@ final class AddReportViewModel: ObservableObject {
 
         Task {
             do {
+                // ✅ eyeColor is now passed into features so it gets saved to eye_color column
                 let features = CatFeatures(
                     breed: "",
                     furColors: [],
-                    eyeColor: eyeColor,
+                    eyeColor: eyeColor,  // this is the name like "Amber", "Green" etc
                     pattern: "",
                     earType: "",
                     size: ""
@@ -79,7 +80,8 @@ final class AddReportViewModel: ObservableObject {
                     description: description.isEmpty ? nil : description,
                     rewardAmount: reward,
                     locationName: locationName.isEmpty ? nil : locationName,
-                    petName: pet
+                    petName: pet,
+                    gender: selectedGender
                 )
 
                 await MainActor.run {

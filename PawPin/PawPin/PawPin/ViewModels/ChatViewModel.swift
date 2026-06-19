@@ -11,13 +11,12 @@ import Combine
 import PostgREST
 import Supabase
 
-// Helper structs for UI representation
 struct ChatPreviewUI: Identifiable, Hashable {
     let id: UUID
     let chatSession: ChatManager.ChatSession
     var otherUserId: UUID
     var username: String
-    var userImage: String?
+    var avatarURL: String?
     var lastMessage: String
     var timeAgo: String
     var isUnread: Bool
@@ -27,46 +26,47 @@ struct ChatPreviewUI: Identifiable, Hashable {
 final class ChatViewModel: ObservableObject {
     @Published var chatPreviews: [ChatPreviewUI] = []
     @Published var isLoading = false
-    
+
     func loadChats() {
         isLoading = true
         Task {
             do {
                 try await ChatManager.shared.fetchChats()
-                
+
                 guard let currentUserId = AuthManager.shared.currentUserID else {
-                    await MainActor.run {
-                        self.chatPreviews = []
-                        self.isLoading = false
-                    }
+                    self.chatPreviews = []
+                    self.isLoading = false
                     return
                 }
-                
-                var previews: [ChatPreviewUI] = []
-                
-                // Fetch profiles of other users in batch
+
                 let otherIds = ChatManager.shared.chats.map { chat in
                     chat.user1Id == currentUserId ? chat.user2Id : chat.user1Id
                 }
-                
-                var profileMap: [UUID: String] = [:]
+
+                // Fetch name AND avatar_url in one query
+                var profileMap: [UUID: (name: String, avatarURL: String?)] = [:]
                 if !otherIds.isEmpty {
                     struct UserProfile: Codable {
                         let id: UUID
                         let full_name: String?
+                        let avatar_url: String?
                     }
                     let fetchedProfiles: [UserProfile] = (try? await SupabaseManager.shared.client
                         .from("users")
-                        .select("id, full_name")
+                        .select("id, full_name, avatar_url")
                         .in("id", values: otherIds.map { $0.uuidString })
                         .execute()
                         .value) ?? []
-                    
+
                     for profile in fetchedProfiles {
-                        profileMap[profile.id] = profile.full_name
+                        profileMap[profile.id] = (
+                            name: profile.full_name ?? "User",
+                            avatarURL: profile.avatar_url
+                        )
                     }
                 }
-                
+
+                // Fetch last messages
                 var lastMessageMap: [UUID: String] = [:]
                 if !ChatManager.shared.chats.isEmpty {
                     try await withThrowingTaskGroup(of: (UUID, String).self) { group in
@@ -80,83 +80,63 @@ final class ChatViewModel: ObservableObject {
                                     .limit(1)
                                     .execute()
                                     .value) ?? []
-                                
-                                let lastMsgText: String
-                                if let firstMsg = lastMsgs.first {
-                                    if let text = firstMsg.content {
-                                        lastMsgText = text
-                                    } else if firstMsg.imageUrl != nil {
-                                        lastMsgText = "📷 Photo"
-                                    } else {
-                                        lastMsgText = "Tap to view messages"
-                                    }
+
+                                let text: String
+                                if let msg = lastMsgs.first {
+                                    if let t = msg.content { text = t }
+                                    else if msg.imageUrl != nil { text = "📷 Photo" }
+                                    else { text = "Tap to view messages" }
                                 } else {
-                                    lastMsgText = "Tap to view messages"
+                                    text = "Tap to view messages"
                                 }
-                                return (chat.id, lastMsgText)
+                                return (chat.id, text)
                             }
                         }
-                        
                         for try await (chatId, text) in group {
                             lastMessageMap[chatId] = text
                         }
                     }
                 }
-                
+
+                var previews: [ChatPreviewUI] = []
                 for chat in ChatManager.shared.chats {
                     let otherId = chat.user1Id == currentUserId ? chat.user2Id : chat.user1Id
-                    let username = profileMap[otherId] ?? "User \(String(otherId.uuidString.prefix(4)))"
-                    let lastMsgText = lastMessageMap[chat.id] ?? "Tap to view messages"
-                    
-                    let preview = ChatPreviewUI(
+                    let profile = profileMap[otherId]
+
+                    previews.append(ChatPreviewUI(
                         id: chat.id,
                         chatSession: chat,
                         otherUserId: otherId,
-                        username: username,
-                        userImage: nil,
-                        lastMessage: lastMsgText,
-                        timeAgo: self.timeAgoString(from: chat.updatedAt),
+                        username: profile?.name ?? "User \(String(otherId.uuidString.prefix(4)))",
+                        avatarURL: profile?.avatarURL,
+                        lastMessage: lastMessageMap[chat.id] ?? "Tap to view messages",
+                        timeAgo: timeAgoString(from: chat.updatedAt),
                         isUnread: false
-                    )
-                    previews.append(preview)
+                    ))
                 }
-                
-                await MainActor.run {
-                    self.chatPreviews = previews
-                    self.isLoading = false
-                }
+
+                self.chatPreviews = previews
+                self.isLoading = false
+
             } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                    print("Error loading chats: \(error)")
-                }
+                self.isLoading = false
+                print("Error loading chats: \(error)")
             }
         }
     }
-    
+
     func deleteChat(chatId: UUID) async {
         do {
-            // Delete all messages belonging to this chat first
             try await SupabaseManager.shared.client
-                .from("messages")
-                .delete()
-                .eq("chat_id", value: chatId.uuidString)
-                .execute()
-
-            // Delete the chat itself
+                .from("messages").delete().eq("chat_id", value: chatId.uuidString).execute()
             try await SupabaseManager.shared.client
-                .from("chats")
-                .delete()
-                .eq("id", value: chatId.uuidString)
-                .execute()
-
-            // Remove locally so the UI updates instantly
+                .from("chats").delete().eq("id", value: chatId.uuidString).execute()
             self.chatPreviews.removeAll { $0.id == chatId }
         } catch {
             print("Error deleting chat: \(error)")
         }
     }
-    
+
     private func timeAgoString(from date: Date) -> String {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short

@@ -34,7 +34,6 @@ struct ReportCardView: View {
     let report: PetReport
     @Environment(\.dismiss) private var dismiss
     @Environment(\.showTabBar) private var showTabBar
-    @State private var showChat = false
     @State private var activeChat: ChatPreviewUI? = nil
     @State private var mapRegion: MKCoordinateRegion
 
@@ -48,17 +47,33 @@ struct ReportCardView: View {
 
     @Environment(\.colorScheme) var colorScheme
 
-    var cardBg: Color {
-        colorScheme == .dark ? Color(.systemBackground) : Color(white: 1.0)
-    }
-    var pageBg: Color {
-        colorScheme == .dark ? Color(.secondarySystemBackground) : Color(white: 0.95)
-    }
-    var fieldBg: Color {
-        colorScheme == .dark ? Color(.tertiarySystemBackground) : Color(red: 0.96, green: 0.96, blue: 0.97)
-    }
+    var cardBg:  Color { colorScheme == .dark ? Color(.systemBackground)          : Color(white: 1.0) }
+    var pageBg:  Color { colorScheme == .dark ? Color(.secondarySystemBackground) : Color(white: 0.95) }
+    var fieldBg: Color { colorScheme == .dark ? Color(.tertiarySystemBackground)  : Color(red: 0.96, green: 0.96, blue: 0.97) }
 
     var isOwner: Bool { report.viewerID == report.ownerID }
+
+    var genderTitle: String {
+        switch report.gender {
+        case .female: return "Female"
+        case .male:   return "Male"
+        default:      return "Unknown"
+        }
+    }
+
+    // Use text symbols instead of SF Symbols since gender.male/female aren't reliable
+    var genderSymbol: String {
+        switch report.gender {
+        case .female: return "♀"
+        case .male:   return "♂"
+        default:      return "?"
+        }
+    }
+
+    var hasEyeColor: Bool {
+        guard let color = report.eyeColor else { return false }
+        return !color.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     private func contactOwner() {
         guard let currentUserId = AuthManager.shared.currentUserID else { return }
@@ -76,7 +91,7 @@ struct ReportCardView: View {
                     chatSession: chatSession,
                     otherUserId: ownerUUID,
                     username: report.petName ?? "Owner",
-                    userImage: nil,
+                    avatarURL: nil,
                     lastMessage: "Tap to view messages",
                     timeAgo: "Just now",
                     isUnread: false
@@ -108,32 +123,25 @@ struct ReportCardView: View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
 
-                // Hero photo + back button
                 ZStack(alignment: .topLeading) {
                     Group {
                         if let photoURLString = report.photoURL, let url = URL(string: photoURLString) {
                             AsyncImage(url: url) { phase in
                                 switch phase {
-                                case .empty:
-                                    ProgressView().frame(height: 300)
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
+                                case .empty:   ProgressView().frame(height: 300)
+                                case .success(let image): image.resizable().scaledToFill()
                                 case .failure:
-                                    Rectangle()
-                                        .fill(Color(red: 0.92, green: 0.88, blue: 0.82))
+                                    Rectangle().fill(Color(red: 0.92, green: 0.88, blue: 0.82))
                                         .overlay(Image(systemName: "pawprint.fill").font(.system(size: 60)).foregroundColor(Color.brand.opacity(0.4)))
-                                @unknown default:
-                                    EmptyView()
+                                @unknown default: EmptyView()
                                 }
                             }
                         } else {
-                            Rectangle()
-                                .fill(Color(red: 0.92, green: 0.88, blue: 0.82))
+                            Rectangle().fill(Color(red: 0.92, green: 0.88, blue: 0.82))
                                 .overlay(Image(systemName: "pawprint.fill").font(.system(size: 60)).foregroundColor(Color.brand.opacity(0.4)))
                         }
                     }
-                    .frame(height: 300)
-                    .clipped()
+                    .frame(height: 300).clipped()
 
                     LinearGradient(colors: [Color.black.opacity(0.35), Color.clear], startPoint: .top, endPoint: .center)
                         .frame(height: 300)
@@ -141,10 +149,8 @@ struct ReportCardView: View {
                     Button { dismiss() } label: {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color.brand)
-                            .padding(12)
-                            .background(cardBg)
-                            .clipShape(Circle())
+                            .foregroundColor(Color.brand).padding(12)
+                            .background(cardBg).clipShape(Circle())
                             .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
                     }
                     .padding(.top, 56).padding(.leading, 16)
@@ -159,8 +165,7 @@ struct ReportCardView: View {
                                 }
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 10).padding(.vertical, 5)
-                                .background(Color.brand)
-                                .clipShape(Capsule())
+                                .background(Color.brand).clipShape(Capsule())
                                 .padding(.top, 60).padding(.trailing, 16)
                             }
                             Spacer()
@@ -192,30 +197,50 @@ struct ReportCardView: View {
                                 Text("\(Int(reward))").font(.title3).bold().foregroundColor(Color.brand)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 8)
-                            .background(Color.brand.opacity(0.12))
-                            .clipShape(Capsule())
+                            .background(Color.brand.opacity(0.12)).clipShape(Capsule())
                         }
                     }
                     .padding(.horizontal, 20).padding(.top, 22).padding(.bottom, 18)
 
+                    // Gender + Eye Color tiles
                     HStack(spacing: 12) {
-                        InfoTile(
-                            icon: report.gender == .female ? "venus" : "mars",
-                            iconColor: Color.brand,
-                            title: report.gender == .female ? "Female" : (report.gender == .male ? "Male" : "Unknown"),
-                            subtitle: "Gender"
-                        )
+
+                        // Gender tile — uses text symbol ♂ ♀
                         HStack(spacing: 12) {
                             ZStack {
-                                Circle().fill(Color(red: 0.90, green: 0.95, blue: 0.90)).frame(width: 44, height: 44)
-                                if let asset = report.eyeAssetName {
-                                    Image(asset).resizable().scaledToFill().frame(width: 36, height: 36).clipShape(Circle())
+                                Circle()
+                                    .fill(Color.brand.opacity(0.12))
+                                    .frame(width: 44, height: 44)
+                                Text(genderSymbol)
+                                    .font(.system(size: 22, weight: .bold))
+                                    .foregroundColor(Color.brand)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(genderTitle).font(.subheadline).bold()
+                                Text("Gender").font(.caption).foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .padding(12).background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
+
+                        // Eye color tile
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(red: 0.90, green: 0.95, blue: 0.90))
+                                    .frame(width: 44, height: 44)
+                                if hasEyeColor, let asset = report.eyeAssetName, !asset.isEmpty {
+                                    Image(asset)
+                                        .resizable().scaledToFill()
+                                        .frame(width: 36, height: 36)
+                                        .clipShape(Circle())
                                 } else {
                                     Image(systemName: "eye.fill").foregroundColor(Color.brand)
                                 }
                             }
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(report.eyeColor ?? "Unknown").font(.subheadline).bold()
+                                Text(hasEyeColor ? report.eyeColor! : "Not set")
+                                    .font(.subheadline).bold()
                                 Text("Eye color").font(.caption).foregroundColor(.secondary)
                             }
                             Spacer()
@@ -224,7 +249,7 @@ struct ReportCardView: View {
                     }
                     .padding(.horizontal, 20).padding(.bottom, 18)
 
-                    if !report.description.isEmpty {
+                    if !report.description.isEmpty && report.description != "No description provided." {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 8) {
                                 Image(systemName: "doc.text.fill").foregroundColor(Color.brand).font(.subheadline)
@@ -275,7 +300,7 @@ struct ReportCardView: View {
                                     .padding(12)
                                 }
                             }
-                            if !report.locationName.isEmpty {
+                            if !report.locationName.isEmpty && report.locationName != "Unknown location" {
                                 HStack(spacing: 6) {
                                     Image(systemName: "mappin").foregroundColor(Color.brand).font(.caption)
                                     Text(report.locationName).font(.caption).foregroundColor(.secondary)
@@ -283,7 +308,7 @@ struct ReportCardView: View {
                                 .padding(.top, 2)
                             }
                         } else {
-                            Text(report.locationName.isEmpty ? "Location not specified" : report.locationName)
+                            Text("Location not specified")
                                 .font(.subheadline).foregroundColor(.secondary)
                                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                                 .background(fieldBg).clipShape(RoundedRectangle(cornerRadius: 14))
@@ -337,7 +362,7 @@ struct ReportCardView: View {
                                     do {
                                         try await SupabaseManager.shared.markReportAsFoundAsync(reportID: report.id)
                                         dismiss()
-                                    } catch { print("Error marking report as found: \(error)") }
+                                    } catch { print("Error: \(error)") }
                                 }
                             } label: {
                                 HStack(spacing: 8) {
@@ -354,7 +379,7 @@ struct ReportCardView: View {
                                     do {
                                         try await SupabaseManager.shared.deleteReportAsync(reportID: report.id)
                                         dismiss()
-                                    } catch { print("Error deleting report: \(error)") }
+                                    } catch { print("Error: \(error)") }
                                 }
                             } label: {
                                 HStack(spacing: 8) {
