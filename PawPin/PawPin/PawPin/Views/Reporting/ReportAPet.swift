@@ -38,7 +38,7 @@ let allEyeOptions: [EyeOption] = [
 // MARK: - Eye Picker Sheet
 struct EyePickerSheet: View {
     @Binding var selectedID: UUID?
-    @Binding var selectedEyeName: String  // ✅ directly bind the name
+    @Binding var selectedEyeName: String
     @Environment(\.dismiss) private var dismiss
 
     let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
@@ -50,7 +50,7 @@ struct EyePickerSheet: View {
                     ForEach(allEyeOptions) { eye in
                         Button {
                             selectedID = eye.id
-                            selectedEyeName = eye.name  // ✅ set name directly on tap
+                            selectedEyeName = eye.name
                             dismiss()
                         } label: {
                             VStack(spacing: 6) {
@@ -265,7 +265,13 @@ struct ReportPetView: View {
     @Environment(\.colorScheme) var colorScheme
 
     let preselectedImage: UIImage?
-    init(preselectedImage: UIImage? = nil) { self.preselectedImage = preselectedImage }
+    // ✅ onComplete callback — called with the new CatReport right after a successful save
+    let onComplete: ((CatReport) -> Void)?
+
+    init(preselectedImage: UIImage? = nil, onComplete: ((CatReport) -> Void)? = nil) {
+        self.preselectedImage = preselectedImage
+        self.onComplete = onComplete
+    }
 
     @StateObject private var viewModel = AddReportViewModel()
     @State private var selectedPhoto: PhotosPickerItem? = nil
@@ -273,7 +279,7 @@ struct ReportPetView: View {
     @State private var reportType: PetReportType        = .found
     @State private var gender: PetGender                = .unknown
     @State private var selectedEyeID: UUID?             = nil
-    @State private var selectedEyeName: String          = ""  // ✅ local state for eye name
+    @State private var selectedEyeName: String          = ""
     @State private var showEyePicker                    = false
     @State private var showLocationPicker               = false
     @State private var goToReward                       = false
@@ -402,12 +408,10 @@ struct ReportPetView: View {
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.adaptiveBorder, lineWidth: 1))
                         }
                         .buttonStyle(.plain)
-                        // ✅ Pass selectedEyeName binding directly into the sheet
                         .sheet(isPresented: $showEyePicker) {
                             EyePickerSheet(selectedID: $selectedEyeID, selectedEyeName: $selectedEyeName)
                         }
                     }
-                    // ✅ Sync selectedEyeName → viewModel.eyeColor whenever it changes
                     .onChange(of: selectedEyeName) { _, name in
                         viewModel.eyeColor = name
                     }
@@ -525,8 +529,17 @@ struct ReportPetView: View {
                 }
             }
         }
-        .navigationDestination(isPresented: $goToReward) { AddRewardView(viewModel: viewModel) }
-        .onChange(of: viewModel.saveSuccess) { _, success in if success { dismiss() } }
+        .navigationDestination(isPresented: $goToReward) {
+            AddRewardView(viewModel: viewModel, onComplete: onComplete)
+        }
+        // ✅ When save succeeds, call onComplete with the new report then dismiss
+        .onChange(of: viewModel.saveSuccess) { _, success in
+            guard success else { return }
+            if let newReport = viewModel.savedReport {
+                onComplete?(newReport)
+            }
+            dismiss()
+        }
         .alert("Error", isPresented: Binding<Bool>(
             get: { viewModel.saveError != nil },
             set: { _ in viewModel.saveError = nil }
@@ -547,6 +560,13 @@ struct AddRewardView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var colorScheme
     @ObservedObject var viewModel: AddReportViewModel
+    // ✅ Pass onComplete through so reward-path posts also trigger optimistic insert
+    let onComplete: ((CatReport) -> Void)?
+
+    init(viewModel: AddReportViewModel, onComplete: ((CatReport) -> Void)? = nil) {
+        self.viewModel = viewModel
+        self.onComplete = onComplete
+    }
 
     var cardBg:  Color { colorScheme == .dark ? Color(.secondarySystemBackground)  : Color(red: 0.97, green: 0.95, blue: 0.91) }
     var pageBg:  Color { colorScheme == .dark ? Color(.systemBackground)           : Color(red: 0.99, green: 0.98, blue: 0.96) }
@@ -641,7 +661,13 @@ struct AddRewardView: View {
         }
         .navigationTitle("Add a Reward")
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: viewModel.saveSuccess) { _, success in if success { dismiss() } }
+        .onChange(of: viewModel.saveSuccess) { _, success in
+            guard success else { return }
+            if let newReport = viewModel.savedReport {
+                onComplete?(newReport)
+            }
+            dismiss()
+        }
         .alert("Error", isPresented: Binding<Bool>(
             get: { viewModel.saveError != nil },
             set: { _ in viewModel.saveError = nil }

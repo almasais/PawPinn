@@ -4,7 +4,6 @@
 //
 //  Created by lay on 24/11/1447 AH.
 //
-
 import Foundation
 import UIKit
 import CoreLocation
@@ -27,6 +26,8 @@ final class AddReportViewModel: ObservableObject {
     @Published var isSaving = false
     @Published var saveError: String? = nil
     @Published var saveSuccess = false
+    // ✅ Populated after a successful save so HomeView can optimistically insert it
+    @Published var savedReport: CatReport? = nil
 
     func saveReport() {
         guard let photo = selectedPhoto else {
@@ -39,11 +40,10 @@ final class AddReportViewModel: ObservableObject {
 
         Task {
             do {
-                // ✅ eyeColor is now passed into features so it gets saved to eye_color column
                 let features = CatFeatures(
                     breed: "",
                     furColors: [],
-                    eyeColor: eyeColor,  // this is the name like "Amber", "Green" etc
+                    eyeColor: eyeColor,
                     pattern: "",
                     earType: "",
                     size: ""
@@ -85,6 +85,8 @@ final class AddReportViewModel: ObservableObject {
                 )
 
                 await MainActor.run {
+                    // ✅ Store the report so ReportPetView can pass it to onComplete
+                    self.savedReport = report
                     self.saveSuccess = true
                     self.isSaving = false
                 }
